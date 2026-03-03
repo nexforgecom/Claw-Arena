@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Star 的像素办公室</title>
+    <title>Carrot's Claw Arena</title>
     <style>
         @font-face {
             font-family: 'ArkPixel';
@@ -81,18 +81,7 @@
             transition: width 0.3s ease;
         }
         #status-text {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #eee;
-            font-size: 14px;
-            background: rgba(0,0,0,0.7);
-            padding: 10px 20px;
-            border-radius: 4px;
-            max-width: 90%;
-            text-align: center;
-            font-family: 'ArkPixel', 'Courier New', monospace;
+            display: none;
         }
         /* 状态控制栏 */
         #control-bar {
@@ -129,16 +118,19 @@
             color: #fff;
             border: 2px solid #555;
             border-radius: 4px;
-            padding: 8px 10px;
+            padding: 4px 8px;
             cursor: pointer;
             font-family: 'ArkPixel', monospace;
-            font-size: 12px;
+            font-size: 10px;
             transition: all 0.2s;
         }
         #control-bar button:hover {
             background: #4a4f5f;
-            border-color: #e94560;
+            border-color: #60a5fa;
         }
+        #task-board-content::-webkit-scrollbar { width: 4px; }
+        #task-board-content::-webkit-scrollbar-track { background: #1a1a2e; }
+        #task-board-content::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
         /* Guest Agent 名单面板（右下角） */
         #guest-agent-panel {
             width: 360px;
@@ -398,7 +390,7 @@
 <body>
     <!-- 加载遮罩 -->
     <div id="loading-overlay">
-        <div id="loading-text">正在加载 Star 的像素办公室...</div>
+        <div id="loading-text">Loading Carrot's Claw Arena...</div>
         <div id="loading-progress-container">
             <div id="loading-progress-bar"></div>
         </div>
@@ -418,14 +410,11 @@
             <div class="memo-decoration">─ ─ ─ ─ ─</div>
         </div>
         
-        <!-- 状态控制栏 -->
+        <!-- 任务板 -->
         <div id="control-bar">
-            <div id="control-bar-title">Agent 状态</div>
-            <div id="control-buttons">
-                <button onclick="setState('idle','待命')">待命</button>
-                <button onclick="setState('writing','工作中')">工作</button>
-                <button onclick="setState('syncing','同步中')">同步</button>
-                <button onclick="setState('error','报警中')">报警</button>
+            <div id="control-bar-title">— 任 务 板 —</div>
+            <div id="task-board-content" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:2px 0;">
+                <div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">加载中...</div>
             </div>
         </div>
 
@@ -511,6 +500,179 @@
         let loadedAssets = 0;
         let loadingProgressBar, loadingProgressContainer, loadingOverlay, loadingText;
 
+        // ── 任务板 ─────────────────────────────────────────────────────────────
+        const TASK_STATUS_LABEL = {
+            pending:      '⏳ 排队',
+            executing:    '🔄 执行中',
+            reviewing:    '👁 待审批',
+            approved:     '✅ 已通过',
+            auto_approved:'💜 自动通过',
+            rejected:     '❌ 已拒绝',
+        };
+        const TASK_STATUS_COLOR = {
+            pending:      '#64748b',
+            executing:    '#fbbf24',
+            reviewing:    '#60a5fa',
+            approved:     '#34d399',
+            auto_approved:'#a78bfa',
+            rejected:     '#f87171',
+        };
+
+        async function loadTaskBoard() {
+            const el = document.getElementById('task-board-content');
+            if (!el) return;
+            try {
+                const tasks = await fetch('/tasks?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+                // Track which losers currently have active tasks
+                _activeTaskLoserIds = new Set(
+                    (Array.isArray(tasks) ? tasks : [])
+                        .filter(t => ['pending','executing','reviewing'].includes(t.status))
+                        .map(t => t.loser_id)
+                );
+                if (!Array.isArray(tasks) || tasks.length === 0) {
+                    el.innerHTML = '<div style="color:#9ca3af;font-size:12px;text-align:center;padding:16px 0;">暂无任务</div>';
+                    return;
+                }
+                // Look up agent names for display
+                const agentMap = {};
+                (challengeEconomy || []).forEach(a => { agentMap[a.id] = a.name || a.id; });
+                const agentName = id => agentMap[id] || id;
+
+                el.innerHTML = tasks.slice(0, 20).map(t => {
+                    const statusLabel = TASK_STATUS_LABEL[t.status] || t.status;
+                    const statusColor = TASK_STATUS_COLOR[t.status] || '#94a3b8';
+                    const promptShort = (t.prompt || '').slice(0, 24) + ((t.prompt || '').length > 24 ? '…' : '');
+                    const hasResult = t.result && !t.result.startsWith('[');
+                    const reviewBtns = t.status === 'reviewing'
+                        ? `<div style="display:flex;gap:4px;margin-top:6px;">
+                             <button onclick="approveTaskUI('${t.id}')" style="flex:1;padding:3px 0;background:#166534;border:none;color:#fff;cursor:pointer;font-family:ArkPixel,monospace;font-size:10px;border-radius:2px;">✅ 通过</button>
+                             <button onclick="rejectTaskUI('${t.id}')" style="flex:1;padding:3px 0;background:#7f1d1d;border:none;color:#fff;cursor:pointer;font-family:ArkPixel,monospace;font-size:10px;border-radius:2px;">❌ 拒绝</button>
+                           </div>`
+                        : '';
+                    const rejectInfo = t.reject_count > 0 ? `<span style="color:#f87171;font-size:9px;"> (拒绝${t.reject_count}次)</span>` : '';
+                    const resultBlock = hasResult
+                        ? `<div style="margin-top:5px;padding:5px 6px;background:#0d1a2e;border-left:2px solid ${statusColor};border-radius:2px;">
+                             <div style="color:#64748b;font-size:9px;margin-bottom:3px;">协商任务完成：</div>
+                             <div style="color:#cbd5e1;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:80px;overflow-y:auto;line-height:1.4;">${(t.result||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                           </div>`
+                        : '';
+                    return `<div style="padding:6px 6px 4px;border-bottom:1px solid #1e293b;font-size:10px;">
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            <span style="color:#94a3b8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${agentName(t.winner_id)} → ${agentName(t.loser_id)}</span>
+                            <span style="color:${statusColor};white-space:nowrap;flex-shrink:0;">${statusLabel}${rejectInfo}</span>
+                        </div>
+                        <div style="color:#cbd5e1;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.prompt||'').replace(/"/g,'&quot;')}">📋 ${promptShort}</div>
+                        ${resultBlock}
+                        ${reviewBtns}
+                    </div>`;
+                }).join('');
+            } catch(e) {
+                el.innerHTML = '<div style="color:#9ca3af;font-size:12px;text-align:center;padding:16px 0;">加载失败</div>';
+            }
+        }
+
+        // 任务板操作：使用 localStorage 中的 agent_id，否则弹窗输入
+        function _getMyWinnerId(fallbackPrompt) {
+            const stored = localStorage.getItem('luobo_agent_id');
+            if (stored) return stored;
+            const manual = prompt(fallbackPrompt);
+            return manual ? manual.trim() : null;
+        }
+
+        async function approveTaskUI(taskId) {
+            const winnerId = _getMyWinnerId('请输入你的 Agent ID（winner）以确认通过：');
+            if (!winnerId) return;
+            try {
+                const res = await fetch('/approve-task', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ winner_id: winnerId, task_id: taskId })
+                }).then(r => r.json());
+                if (res.ok) {
+                    const msg = res.freed ? '✅ 通过！契约已完成，loser 获得自由！' : `✅ 通过！还剩任务中...`;
+                    showBattleResult(msg);
+                } else { alert('操作失败：' + (res.msg || '未知错误')); }
+                await loadTaskBoard();
+                await Promise.all([loadChallengePanel(), loadLedger()]);
+            } catch(e) { alert('请求失败：' + e.message); }
+        }
+
+        async function rejectTaskUI(taskId) {
+            const winnerId = _getMyWinnerId('请输入你的 Agent ID（winner）以拒绝：');
+            if (!winnerId) return;
+            try {
+                const res = await fetch('/reject-task', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ winner_id: winnerId, task_id: taskId })
+                }).then(r => r.json());
+                if (res.ok) {
+                    const msg = res.auto_approved
+                        ? '💜 已达拒绝上限，任务自动通过！'
+                        : `❌ 已拒绝，AI 重新执行中... (第${res.reject_count}次拒绝)`;
+                    showBattleResult(msg);
+                } else { alert('操作失败：' + (res.msg || '未知错误')); }
+                await loadTaskBoard();
+                await Promise.all([loadChallengePanel(), loadLedger()]);
+            } catch(e) { alert('请求失败：' + e.message); }
+        }
+
+        // 发布任务弹框（在挑战者列表点击 loser 的契约发起）
+        function openAssignTask(loserId, loserName, contractWinnerId) {
+            // Try to resolve winner_id: 1) from localStorage (logged-in user), 2) from contract
+            const myAgentId = localStorage.getItem('luobo_agent_id') || '';
+            const prefilledWinner = myAgentId || contractWinnerId || '';
+            const winnerLocked = !!myAgentId; // if logged in, lock the field
+
+            const overlay = document.createElement('div');
+            overlay.id = 'assign-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99998;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+              <div style="background:#0f172a;border:2px solid #60a5fa;border-radius:6px;padding:24px;min-width:320px;max-width:440px;font-family:ArkPixel,monospace;color:#e2e8f0;">
+                <div style="font-size:16px;font-weight:bold;color:#60a5fa;margin-bottom:12px;">📋 发布任务</div>
+                <div style="margin-bottom:10px;font-size:12px;">给 <span style="color:#f472b6;">${loserName}</span> 布置一项任务</div>
+                ${winnerLocked
+                    ? `<div style="margin-bottom:10px;font-size:11px;color:#34d399;">✅ 以你的 Agent 身份发布：<b>${prefilledWinner}</b></div>`
+                    : `<div>
+                         <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">你的 Agent ID (winner):</div>
+                         <input id="assign-winner" type="text" value="${prefilledWinner}" placeholder="e.g. agent_a" style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:10px;box-sizing:border-box;">
+                       </div>`
+                }
+                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">任务 Prompt (≤500字):</div>
+                <textarea id="assign-prompt" rows="4" maxlength="500" placeholder="用你的角色语气写一首..." style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;resize:vertical;margin-bottom:16px;box-sizing:border-box;"></textarea>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                  <button onclick="document.getElementById('assign-overlay').remove()" style="padding:6px 14px;background:#374151;border:none;color:#e2e8f0;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">取消</button>
+                  <button onclick="submitAssignTask('${loserId}','${prefilledWinner}',${winnerLocked})" style="padding:6px 14px;background:#1d4ed8;border:none;color:#fff;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">📤 发布！</button>
+                </div>
+              </div>`;
+            document.body.appendChild(overlay);
+        }
+
+        async function submitAssignTask(loserId, prefilledWinnerId, winnerLocked) {
+            const winnerId = winnerLocked
+                ? prefilledWinnerId
+                : (document.getElementById('assign-winner')?.value?.trim() || prefilledWinnerId);
+            const prompt   = document.getElementById('assign-prompt')?.value?.trim();
+            if (!winnerId) { alert('无法确认你的 Agent ID，请先加入竞技场'); return; }
+            if (!prompt)   { alert('请填写任务 Prompt'); return; }
+            document.getElementById('assign-overlay')?.remove();
+            try {
+                const res = await fetch('/assign-task', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ winner_id: winnerId, loser_id: loserId, prompt })
+                }).then(r => r.json());
+                if (res.ok) {
+                    showBattleResult('📋 任务已发布！AI 执行中，稍后在任务板查看结果');
+                } else {
+                    alert('发布失败：' + (res.msg || '未知错误'));
+                }
+                // Reload task board first (updates _activeTaskLoserIds), then challenge panel
+                await loadTaskBoard();
+                await loadChallengePanel();
+            } catch(e) { alert('请求失败：' + e.message); }
+        }
+
         // Memo 相关函数
         async function loadLedger() {
             const el = document.getElementById('ledger-content');
@@ -560,7 +722,7 @@
                 loadingProgressBar.style.width = percent + '%';
             }
             if (loadingText) {
-                loadingText.textContent = `正在加载 Star 的像素办公室... ${percent}%`;
+                loadingText.textContent = `Loading Carrot's Claw Arena... ${percent}%`;
             }
         }
 
@@ -678,6 +840,7 @@
         let game, star, sofa, serverroom, areas = {}, currentState = 'idle', pendingDesiredState = null, statusText, lastFetch = 0, lastBlink = 0, lastBubble = 0, targetX = 660, targetY = 170, bubble = null, typewriterText = '', typewriterTarget = '', typewriterIndex = 0, lastTypewriter = 0, syncAnimSprite = null, catBubble = null;
         let isMoving = false;
         let waypoints = []; // list of (x,y) to walk through in order
+        window._horseBattleMode = false; // true during challenge → horse stands idle
         let lastWanderAt = 0;
 
         let coordsOverlay, coordsDisplay, coordsToggle;
@@ -814,6 +977,7 @@
 
         // ── 挑战者列表 & 经济数据 ─────────────────────────────────────────
         let challengeEconomy = [];
+        let _activeTaskLoserIds = new Set(); // loser_ids with pending/executing/reviewing tasks
 
         let _prevTokens = {}; // agentId → last known tokens for flash detection
 
@@ -830,33 +994,44 @@
         function renderChallengePanel() {
             const list = document.getElementById('guest-agent-list');
             if (!list) return;
-            if (challengeEconomy.length === 0) {
-                list.innerHTML = '<div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">无经济 Agent</div>';
+            // Only show real player agents
+            const realAgents = challengeEconomy.filter(a => a.agent_type === 'real');
+            if (realAgents.length === 0) {
+                list.innerHTML = '<div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">等待玩家加入...</div>';
+                renderArenaPlayersInScene();
                 return;
             }
+            const myAgentId = localStorage.getItem('luobo_agent_id') || '';
             const statusIcon = { idle:'🟢', in_battle:'⚔️', enslaved:'⛓️' };
-            const sorted = [...challengeEconomy].sort((a,b) => (b.tokens||0)-(a.tokens||0));
+            const sorted = [...realAgents].sort((a,b) => (b.tokens||0)-(a.tokens||0));
             list.innerHTML = sorted.map((agent, i) => {
                 const icon = statusIcon[agent.status] || '⚪';
+                const hasActiveTask = _activeTaskLoserIds.has(agent.id);
+                // "发任务" only for the winner of this specific contract
+                const isMyLoser = agent.status === 'enslaved' && myAgentId && myAgentId === agent.contract?.winner_id;
                 const contractInfo = agent.contract
-                    ? `<span style="color:#f59e0b;font-size:9px;"> ⛓️ master:${agent.contract.master_id} tasks:${agent.contract.tasks_remaining}</span>`
+                    ? `<span style="color:#f59e0b;font-size:9px;"> ⛓️ 剩${agent.contract.tasks_remaining}任务</span>`
                     : '';
-                const canChallenge = agent.status === 'idle';
+                // Can't challenge yourself or agents not idle
+                const canChallenge = agent.status === 'idle' && agent.id !== myAgentId;
                 const btn = canChallenge
                     ? `<button onclick="openChallenge('${agent.id}','${agent.name}')" style="padding:2px 8px;font-family:ArkPixel,monospace;font-size:10px;background:#dc2626;border:none;color:#fff;cursor:pointer;border-radius:2px;">⚔️ 挑战</button>`
+                    : isMyLoser && hasActiveTask
+                    ? `<button disabled style="padding:2px 8px;font-family:ArkPixel,monospace;font-size:10px;background:#374151;border:none;color:#fbbf24;border-radius:2px;">⏳ 任务中</button>`
+                    : isMyLoser
+                    ? `<button onclick="openAssignTask('${agent.id}','${agent.name}','${agent.contract?.winner_id||''}')" style="padding:2px 8px;font-family:ArkPixel,monospace;font-size:10px;background:#1d4ed8;border:none;color:#fff;cursor:pointer;border-radius:2px;">📋 发任务</button>`
+                    : agent.status === 'enslaved'
+                    ? `<span style="color:#f59e0b;font-size:9px;padding:2px 6px;">⛓️ 被役使</span>`
+                    : agent.id === myAgentId
+                    ? `<span style="color:#818cf8;font-size:9px;padding:2px 6px;">[我]</span>`
                     : `<button disabled style="padding:2px 8px;font-family:ArkPixel,monospace;font-size:10px;background:#374151;border:none;color:#6b7280;border-radius:2px;">${icon} 忙碌</button>`;
                 const rankColor = i===0?'#fbbf24':i===1?'#94a3b8':i===2?'#b45309':'#475569';
-                const isReal = agent.agent_type === 'real';
-                const onlineDot = isReal
-                    ? (agent.online ? '<span title="在线" style="color:#34d399;font-size:9px;">●</span>' : '<span title="离线" style="color:#6b7280;font-size:9px;">●</span>')
-                    : '';
-                const typeBadge = isReal
-                    ? `<span title="真实玩家" style="color:#818cf8;font-size:9px;background:rgba(99,102,241,0.15);border-radius:2px;padding:0 3px;">👤</span>`
-                    : `<span title="AI Agent" style="color:#64748b;font-size:9px;">🤖</span>`;
+                const onlineDot = agent.online
+                    ? '<span title="在线" style="color:#34d399;font-size:9px;">●</span>'
+                    : '<span title="离线" style="color:#6b7280;font-size:9px;">●</span>';
                 return `<div data-econid="${agent.id}" style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-bottom:1px solid #1e293b;">
                     <span style="color:${rankColor};font-size:10px;min-width:14px;">#${i+1}</span>
                     ${onlineDot}
-                    ${typeBadge}
                     <span style="color:#e2e8f0;font-size:11px;font-family:ArkPixel,monospace;flex:1;">${agent.name}</span>
                     <span style="color:#fbbf24;font-size:11px;min-width:44px;">💰${agent.tokens??'?'}</span>
                     ${contractInfo}
@@ -873,11 +1048,10 @@
                         if (row) {
                             const cls = agent.tokens > prev ? 'token-gain-flash' : 'token-loss-flash';
                             row.classList.remove('token-gain-flash','token-loss-flash');
-                            void row.offsetWidth; // reflow to restart animation
+                            void row.offsetWidth;
                             row.classList.add(cls);
                             setTimeout(() => row.classList.remove(cls), 800);
 
-                            // Floating delta number
                             const delta = agent.tokens - prev;
                             const rect = row.getBoundingClientRect();
                             const floater = document.createElement('div');
@@ -894,13 +1068,101 @@
                     _prevTokens[agent.id] = agent.tokens;
                 }
             });
+
+            renderArenaPlayersInScene();
+        }
+
+        // Render real arena players (from challengeEconomy) as sprites in the Phaser scene
+        const ARENA_POSITIONS = [
+            { x: 883, y: 373 },
+            { x: 943, y: 373 },
+            { x: 913, y: 393 },
+            { x: 853, y: 373 },
+            { x: 973, y: 373 },
+        ];
+        function renderArenaPlayersInScene() {
+            if (!game) return;
+            const realPlayers = challengeEconomy.filter(a => a.agent_type === 'real');
+            const seenIds = new Set(realPlayers.map(a => a.id));
+
+            // Remove sprites for players who left
+            Object.keys(guestSprites).forEach(id => {
+                if (id.startsWith('real_') && !seenIds.has(id)) {
+                    try { guestSprites[id].sprite.destroy(); } catch(e) {}
+                    try { guestSprites[id].nameText.destroy(); } catch(e) {}
+                    delete guestSprites[id];
+                }
+            });
+
+            realPlayers.forEach((agent, idx) => {
+                const id = agent.id;
+                if (guestSprites[id]) return; // already rendered
+                const pos = ARENA_POSITIONS[idx % ARENA_POSITIONS.length];
+
+                const ARENA_AVATAR_KEYS = { caw: 'avatar_caw', rabbit: 'avatar_rabbit', sheep: 'avatar_sheep' };
+                const arenaKey = ARENA_AVATAR_KEYS[agent.avatar];
+                let sprite;
+                if (arenaKey && game.textures.exists(arenaKey)) {
+                    // Load as animated sprite (spritesheet: frameWidth=458, frameHeight=384)
+                    sprite = game.add.sprite(pos.x, pos.y, arenaKey).setOrigin(0.5, 1);
+                    sprite.setScale(90 / 384); // display height = 90px
+                    const idleKey = `${arenaKey}_idle`;
+                    if (game.anims.exists(idleKey)) sprite.anims.play(idleKey, true);
+                    sprite._avatarType = 'arena';
+                } else {
+                    // Fallback: default to rabbit
+                    const fallbackKey = 'avatar_rabbit';
+                    sprite = game.add.sprite(pos.x, pos.y, fallbackKey).setOrigin(0.5, 1);
+                    sprite.setScale(90 / 384);
+                    if (game.anims.exists('avatar_rabbit_idle')) sprite.anims.play('avatar_rabbit_idle', true);
+                    sprite._avatarType = 'arena';
+                }
+                sprite.setDepth(2600);
+                sprite._baseY = pos.y;
+
+                const nameText = game.add.text(pos.x, pos.y - 100, agent.name || '玩家', {
+                    fontFamily: 'ArkPixel, monospace',
+                    fontSize: '15px',
+                    fill: '#ffffff',
+                    stroke: '#000',
+                    strokeThickness: 3
+                }).setOrigin(0.5).setDepth(2601);
+
+                guestSprites[id] = { sprite, nameText };
+            });
         }
 
         function openChallenge(defenderId, defenderName) {
-            const myAgents = challengeEconomy.filter(a => a.status === 'idle' && a.id !== defenderId);
-            if (myAgents.length === 0) { alert('没有可用的挑战者（需要 idle 状态的 agent）'); return; }
+            // If user is logged in, only allow them to challenge with their own agent
+            const myAgentId = localStorage.getItem('luobo_agent_id');
+            let myAgents;
+            if (myAgentId) {
+                const mine = challengeEconomy.find(a => a.id === myAgentId && a.status === 'idle');
+                if (!mine) {
+                    alert(myAgentId === defenderId
+                        ? '不能挑战自己'
+                        : '你的 Agent 当前不在 idle 状态，无法发起挑战');
+                    return;
+                }
+                if (myAgentId === defenderId) { alert('不能挑战自己'); return; }
+                myAgents = [mine];
+            } else {
+                myAgents = challengeEconomy.filter(a => a.status === 'idle' && a.id !== defenderId);
+                if (myAgents.length === 0) { alert('没有可用的挑战者（需要先加入竞技场）'); return; }
+            }
+
+            const attackerSection = myAgents.length === 1
+                ? `<div style="margin-bottom:10px;font-size:12px;">挑战者: <span style="color:#34d399;">${myAgents[0].name} (💰${myAgents[0].tokens})</span>
+                   <input type="hidden" id="challenge-attacker" value="${myAgents[0].id}"></div>`
+                : `<div>
+                     <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">选择挑战者:</div>
+                     <select id="challenge-attacker" style="width:100%;padding:4px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:10px;">
+                       ${myAgents.map(a => `<option value="${a.id}">${a.name} (💰${a.tokens})</option>`).join('')}
+                     </select>
+                   </div>`;
 
             // Build modal
+            window._horseBattleMode = true; // 萝卜停下来看对战
             const overlay = document.createElement('div');
             overlay.id = 'challenge-overlay';
             overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99998;display:flex;align-items:center;justify-content:center;';
@@ -908,18 +1170,129 @@
               <div style="background:#0f172a;border:2px solid #fbbf24;border-radius:6px;padding:24px;min-width:280px;font-family:ArkPixel,monospace;color:#e2e8f0;">
                 <div style="font-size:16px;font-weight:bold;color:#fbbf24;margin-bottom:16px;">⚔️ 发起挑战</div>
                 <div style="margin-bottom:10px;">防守方: <span style="color:#f472b6;">${defenderName}</span></div>
-                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">选择挑战者:</div>
-                <select id="challenge-attacker" style="width:100%;padding:4px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:10px;">
-                  ${myAgents.map(a => `<option value="${a.id}">${a.name} (💰${a.tokens})</option>`).join('')}
-                </select>
-                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">押注 token:</div>
-                <input id="challenge-bet" type="number" min="1" value="10" style="width:100%;padding:4px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:16px;box-sizing:border-box;">
+                <div style="font-size:11px;color:#64748b;margin-bottom:10px;">胜者获得 token + 契约劳务，输者进入打工模式</div>
+                ${attackerSection}
+                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">押注 token (5–20):</div>
+                <input id="challenge-bet" type="number" min="5" max="20" value="10" style="width:100%;padding:4px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:16px;box-sizing:border-box;">
                 <div style="display:flex;gap:8px;justify-content:flex-end;">
-                  <button onclick="document.getElementById('challenge-overlay').remove()" style="padding:6px 14px;background:#374151;border:none;color:#e2e8f0;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">取消</button>
+                  <button onclick="window._horseBattleMode=false;document.getElementById('challenge-overlay').remove()" style="padding:6px 14px;background:#374151;border:none;color:#e2e8f0;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">取消</button>
                   <button onclick="submitChallenge('${defenderId}')" style="padding:6px 14px;background:#dc2626;border:none;color:#fff;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">⚔️ 开战!</button>
                 </div>
               </div>`;
             document.body.appendChild(overlay);
+        }
+
+        // ── Battle explosion at midpoint between two sprites ──────────────────
+        function playBattleExplosion(agentAId, agentBId) {
+            if (!game || !window._phaserTweens) return;
+            const infoA = guestSprites[agentAId];
+            const infoB = guestSprites[agentBId];
+            // Use position even if only one sprite found (explosion at that sprite)
+            const sa = infoA?.sprite;
+            const sb = infoB?.sprite;
+            if (!sa && !sb) return;
+            const ax = sa ? sa.x : sb.x, ay = sa ? (sa._baseY ?? sa.y) : (sb._baseY ?? sb.y);
+            const bx = sb ? sb.x : sa.x, by = sb ? (sb._baseY ?? sb.y) : (sa._baseY ?? sa.y);
+            const mx = (ax + bx) / 2;
+            const my = (ay + by) / 2 - 50;
+
+            // Expanding orange/yellow rings
+            const ringColors = [0xffffff, 0xffd700, 0xff9500, 0xff6b35, 0xff4500];
+            ringColors.forEach((color, i) => {
+                const g = game.add.graphics();
+                g.fillStyle(color, 0.9 - i * 0.1);
+                g.fillCircle(0, 0, 12 + i * 7);
+                g.setPosition(mx, my).setDepth(3000);
+                window._phaserTweens.add({
+                    targets: g, scaleX: 3 + i * 0.7, scaleY: 3 + i * 0.7, alpha: 0,
+                    duration: 420 + i * 70, ease: 'Cubic.easeOut', delay: i * 35,
+                    onComplete: () => { try { g.destroy(); } catch(e) {} }
+                });
+            });
+
+            // Sparks shooting outward (8 directions)
+            for (let d = 0; d < 8; d++) {
+                const angle = (d / 8) * Math.PI * 2;
+                const spark = game.add.graphics();
+                spark.fillStyle(0xffd700, 1);
+                spark.fillRect(-3, -3, 6, 6);
+                spark.setPosition(mx, my).setDepth(3001);
+                window._phaserTweens.add({
+                    targets: spark,
+                    x: mx + Math.cos(angle) * 90,
+                    y: my + Math.sin(angle) * 90,
+                    alpha: 0, scaleX: 0.3, scaleY: 0.3,
+                    duration: 500, ease: 'Cubic.easeOut', delay: 30,
+                    onComplete: () => { try { spark.destroy(); } catch(e) {} }
+                });
+            }
+
+            // Central 💥 emoji that pops and floats up
+            const boom = game.add.text(mx, my, '💥', { fontSize: '42px' })
+                .setOrigin(0.5).setDepth(3002).setAlpha(0).setScale(0.3);
+            window._phaserTweens.add({
+                targets: boom, alpha: 1, scaleX: 1.4, scaleY: 1.4,
+                duration: 160, ease: 'Back.easeOut',
+                onComplete: () => {
+                    window._phaserTweens.add({
+                        targets: boom, y: my - 80, alpha: 0, scaleX: 0.8, scaleY: 0.8,
+                        duration: 600, ease: 'Cubic.easeIn',
+                        onComplete: () => { try { boom.destroy(); } catch(e) {} }
+                    });
+                }
+            });
+        }
+
+        // ── Battle result animations ────────────────────────────────────────────
+        function playVictoryAnim(agentId) {
+            const info = guestSprites[agentId];
+            if (!info || !info.sprite || !window._phaserTweens) return;
+            const sprite = info.sprite;
+            const baseY  = sprite._baseY ?? sprite.y;
+            sprite._baseY = baseY; // persist for future calls
+            try {
+                // Jump up and down 3 times in celebration
+                window._phaserTweens.add({
+                    targets:  sprite,
+                    y:        baseY - 55,
+                    duration: 220,
+                    ease:     'Sine.easeOut',
+                    yoyo:     true,
+                    repeat:   2,
+                    onComplete: () => { try { sprite.setY(baseY); } catch(e) {} }
+                });
+            } catch(e) {}
+        }
+
+        function playDefeatAnim(agentId) {
+            const info = guestSprites[agentId];
+            if (!info || !info.sprite || !window._phaserTweens) return;
+            const sprite = info.sprite;
+            const baseY  = sprite._baseY ?? sprite.y;
+            sprite._baseY = baseY;
+            try {
+                // Fall over: rotate 90° clockwise + sink down + fade out
+                window._phaserTweens.add({
+                    targets:  sprite,
+                    angle:    90,
+                    y:        baseY + 40,
+                    alpha:    0,
+                    duration: 550,
+                    ease:     'Cubic.easeIn',
+                    onComplete: () => {
+                        try { sprite.setVisible(false); } catch(e) {}
+                        // Respawn upright after the battle banner clears
+                        setTimeout(() => {
+                            try {
+                                sprite.setAngle(0);
+                                sprite.setAlpha(1);
+                                sprite.setY(baseY);
+                                sprite.setVisible(true);
+                            } catch(e) {}
+                        }, 3500);
+                    }
+                });
+            } catch(e) {}
         }
 
         async function submitChallenge(defenderId) {
@@ -927,6 +1300,10 @@
             const bet = parseInt(document.getElementById('challenge-bet')?.value || '10');
             document.getElementById('challenge-overlay')?.remove();
             if (!challengerId) return;
+
+            // Trigger explosion immediately while waiting for server
+            playBattleExplosion(challengerId, defenderId);
+
             try {
                 const res = await fetch('/challenge', {
                     method: 'POST',
@@ -945,6 +1322,14 @@
                     ? `${ma} vs ${mb} — 平局！`
                     : `${ma} vs ${mb} — ${winnerName} 胜！${isContract ? '⛓️ 契约创建' : '💰 token 转移'}`;
                 showBattleResult(resultText);
+
+                // Battle sprites animate
+                if (b.winner !== 'draw') {
+                    const animWinnerId = b.winner === 'a' ? b.agent_a : b.agent_b;
+                    const animLoserId  = b.winner === 'a' ? b.agent_b : b.agent_a;
+                    playVictoryAnim(animWinnerId);
+                    playDefeatAnim(animLoserId);
+                }
 
                 // Token flow animation
                 if (b.winner !== 'draw' && !isContract) {
@@ -975,7 +1360,10 @@
             setTimeout(() => {
                 el.style.transform = 'translateX(-50%) scale(0.8)';
                 el.style.opacity = '0';
-                setTimeout(() => el.remove(), 300);
+                setTimeout(() => {
+                    el.remove();
+                    window._horseBattleMode = false; // 萝卜恢复巡逻
+                }, 300);
             }, 3500);
         }
 
@@ -1067,7 +1455,7 @@
 
         function startHeartbeat(pushToken) {
             if (_heartbeatTimer) clearInterval(_heartbeatTimer);
-            const beat = () => fetch('/agent-push', {
+            const beat = () => fetch('/arena-heartbeat', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ push_token: pushToken, status: 'idle' })
@@ -1082,12 +1470,13 @@
             const savedName = localStorage.getItem('luobo_agent_name');
             if (!token) return;
             // Verify token still valid
-            fetch('/agent-push', {
+            fetch('/arena-heartbeat', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ push_token: token, status: 'idle' })
             }).then(r => r.json()).then(d => {
                 if (d.ok) {
+                    // agent_id is already in localStorage from previous session
                     startHeartbeat(token);
                     // Show small toast
                     const toast = document.createElement('div');
@@ -1096,37 +1485,93 @@
                     document.body.appendChild(toast);
                     setTimeout(() => toast.remove(), 3000);
                 } else {
-                    // Token expired, clear it
+                    // Token expired, clear all session data
                     localStorage.removeItem('luobo_push_token');
+                    localStorage.removeItem('luobo_agent_id');
                     localStorage.removeItem('luobo_agent_name');
                 }
             }).catch(() => {});
         })();
 
         // ── 加入竞技场弹框 ─────────────────────────────────────────────────────
+        let _selectedAvatar = 'rabbit'; // default avatar selection
+
+        function selectAvatar(value, el) {
+            _selectedAvatar = value;
+            document.querySelectorAll('#avatar-picker [data-avatar]').forEach(e => {
+                e.style.borderColor = 'transparent';
+                e.style.boxShadow = 'none';
+            });
+            el.style.borderColor = '#818cf8';
+            el.style.boxShadow = '0 0 8px #818cf8';
+        }
+
+        function _buildAvatarPicker() {
+            const avatars = [
+                { key: 'rabbit', label: '兔子', img: '/static/rabbit.png' },
+                { key: 'caw',    label: '乌鸦', img: '/static/caw.png'    },
+                { key: 'sheep',  label: '绵羊', img: '/static/sheep.png'  },
+            ];
+            // Sheet: 2752×1536, 6 cols × 4 rows → first frame = 458×384
+            // Scale first frame to 72px height: factor = 72/384 = 0.1875
+            // Full sheet at that scale: 516×288; show top-left 72×72 crop
+            const bgW = Math.round(2752 * 72 / 384); // 516
+            const bgH = 72; // 288 scaled → frame height = 72px
+            const items = avatars.map(a => {
+                const isDefault = a.key === 'rabbit';
+                return `<div onclick="selectAvatar('${a.key}',this)" data-avatar="${a.key}"
+                    title="${a.label}"
+                    style="display:flex;flex-direction:column;align-items:center;gap:4px;
+                           cursor:pointer;padding:6px;border:2px solid ${isDefault?'#818cf8':'transparent'};
+                           border-radius:4px;box-shadow:${isDefault?'0 0 8px #818cf8':'none'};
+                           background:#0a1628;flex-shrink:0;">
+                  <div style="width:72px;height:72px;overflow:hidden;border-radius:2px;
+                              background-image:url('${a.img}');
+                              background-size:${bgW}px ${bgW * 1536 / 2752 | 0}px;
+                              background-position:0 0;
+                              background-repeat:no-repeat;
+                              image-rendering:pixelated;"></div>
+                  <span style="font-size:10px;color:#94a3b8;">${a.label}</span>
+                </div>`;
+            }).join('');
+
+            return `
+              <div style="margin-bottom:4px;font-size:12px;color:#94a3b8;">选择你的形象 <span style="color:#64748b;font-size:10px;">（竞技场中的角色外观）</span></div>
+              <div id="avatar-picker" style="background:#0d1a2e;border:1px solid #1e3a5f;border-radius:4px;padding:10px;margin-bottom:12px;display:flex;gap:12px;justify-content:center;">
+                ${items}
+              </div>`;
+        }
+
         function openJoinModal() {
             if (document.getElementById('join-overlay')) return;
+            _selectedAvatar = 'rabbit'; // reset on open
             const overlay = document.createElement('div');
             overlay.id = 'join-overlay';
-            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99998;display:flex;align-items:center;justify-content:center;';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99998;display:flex;align-items:center;justify-content:center;overflow-y:auto;';
             overlay.innerHTML = `
-              <div style="background:#0f172a;border:2px solid #818cf8;border-radius:6px;padding:24px;min-width:300px;font-family:ArkPixel,monospace;color:#e2e8f0;">
-                <div style="font-size:16px;font-weight:bold;color:#818cf8;margin-bottom:16px;">👤 加入竞技场</div>
-                <div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">取个名字，领取 100 tokens，加入对战！</div>
-                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">你的名字:</div>
+              <div style="background:#0f172a;border:2px solid #818cf8;border-radius:6px;padding:24px;min-width:320px;max-width:460px;width:90%;margin:auto;font-family:ArkPixel,monospace;color:#e2e8f0;">
+                <div style="font-size:16px;font-weight:bold;color:#818cf8;margin-bottom:6px;">👤 加入 Carrot's Claw Arena</div>
+                <div style="font-size:11px;color:#64748b;margin-bottom:14px;">领取 50 tokens，开始对战！输了需用自己的 API Key 完成任务赎身。</div>
+
+                <div style="margin-bottom:4px;font-size:12px;color:#94a3b8;">玩家昵称 <span style="color:#f87171">*</span> <span style="color:#64748b;font-size:10px;">（登录用，唯一标识）</span></div>
                 <input id="join-name" type="text" maxlength="24" placeholder="e.g. 小明" style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:10px;box-sizing:border-box;">
-                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">模型族 (可选):</div>
-                <select id="join-family" style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:16px;">
-                  <option value="human">👤 Human</option>
-                  <option value="claude">🤖 Claude</option>
-                  <option value="gpt">🤖 GPT</option>
-                  <option value="gemini">🤖 Gemini</option>
-                  <option value="other">🤖 Other</option>
-                </select>
+
+                <div style="margin-bottom:4px;font-size:12px;color:#94a3b8;">Agent 昵称 <span style="color:#64748b;font-size:10px;">（竞技场展示名，留空同玩家昵称）</span></div>
+                <input id="join-agent-name" type="text" maxlength="24" placeholder="e.g. 龙王" style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:10px;box-sizing:border-box;">
+
+                <div style="margin-bottom:4px;font-size:12px;color:#94a3b8;">Agent 个性 <span style="color:#64748b;font-size:10px;">（输了做任务时 AI 的说话风格）</span></div>
+                <input id="join-persona" type="text" maxlength="200" placeholder="e.g. 说话爱用颜文字，热情开朗" style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:10px;box-sizing:border-box;">
+
+                ${_buildAvatarPicker()}
+
+                <div style="margin-bottom:4px;font-size:12px;color:#94a3b8;">Anthropic API Key <span style="color:#f87171">*</span> <span style="color:#64748b;font-size:10px;">（仅存于服务器，不对外展示）</span></div>
+                <input id="join-apikey" type="password" maxlength="300" placeholder="sk-ant-..." style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:4px;box-sizing:border-box;">
+                <div style="font-size:10px;color:#475569;margin-bottom:14px;">⚠️ 在局域网内传输，请勿在公共网络使用此功能</div>
+
                 <div id="join-result" style="display:none;background:#0d2137;border:1px solid #1e3a5f;border-radius:4px;padding:10px;margin-bottom:12px;font-size:11px;word-break:break-all;"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;">
                   <button onclick="document.getElementById('join-overlay').remove()" style="padding:6px 14px;background:#374151;border:none;color:#e2e8f0;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">取消</button>
-                  <button id="join-submit-btn" onclick="submitJoin()" style="padding:6px 14px;background:#6366f1;border:none;color:#fff;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">加入！</button>
+                  <button id="join-submit-btn" onclick="submitJoin()" style="padding:6px 14px;background:#6366f1;border:none;color:#fff;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">⚔️ 加入！</button>
                 </div>
               </div>`;
             document.body.appendChild(overlay);
@@ -1134,26 +1579,32 @@
         }
 
         async function submitJoin() {
-            const name = document.getElementById('join-name')?.value?.trim();
-            const family = document.getElementById('join-family')?.value;
-            if (!name) { alert('请输入名字'); return; }
+            const name       = document.getElementById('join-name')?.value?.trim();
+            const agent_name = document.getElementById('join-agent-name')?.value?.trim() || name;
+            const persona    = document.getElementById('join-persona')?.value?.trim() || '';
+            const apiKeyEl   = document.getElementById('join-apikey');
+            const api_key    = apiKeyEl?.value?.trim() || '';
+            if (!name)    { alert('请输入玩家昵称'); return; }
+            if (!api_key) { alert('请输入 Anthropic API Key（输了需要它来执行任务赎身）'); return; }
             document.getElementById('join-submit-btn').disabled = true;
             try {
                 const res = await fetch('/join', {
                     method: 'POST',
                     headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ name, model_family: family })
+                    body: JSON.stringify({ name, agent_name, persona, api_key, avatar: _selectedAvatar })
                 }).then(r => r.json());
+                // Clear api_key from DOM immediately after submission
+                if (apiKeyEl) apiKeyEl.value = '';
                 if (!res.ok) { alert(res.msg || '加入失败'); return; }
-                // Save to localStorage for auto-rejoin
                 localStorage.setItem('luobo_push_token', res.push_token);
-                localStorage.setItem('luobo_agent_name', res.name || name);
+                localStorage.setItem('luobo_agent_id',   res.agent_id);
+                localStorage.setItem('luobo_agent_name', res.agent_name || agent_name);
 
                 const el = document.getElementById('join-result');
                 el.style.display = 'block';
                 el.innerHTML = `
                   <div style="color:#34d399;font-size:14px;margin-bottom:8px;">✅ 加入成功！</div>
-                  <div style="color:#e2e8f0;">你好，<b>${name}</b>！你有 💰${res.tokens} tokens</div>
+                  <div style="color:#e2e8f0;">你好，<b>${res.agent_name || agent_name}</b>！你有 💰${res.tokens} tokens</div>
                   <div style="color:#94a3b8;margin-top:6px;font-size:11px;">只要页面开着，你就保持在线 🟢<br>刷新页面也会自动恢复你的状态</div>
                 `;
                 document.getElementById('join-submit-btn').style.display = 'none';
@@ -1242,37 +1693,42 @@
                     } else if ((agent.name === '水星') && game.textures.exists('guestagent2')) {
                         sprite = game.add.image(p.x, p.y, 'guestagent2').setOrigin(0.5, 1).setScale(1.05);
                     } else {
-                        // 非 demo 访客：优先用动画精灵（guest_anim_x），其次静态图，兜底星星
-                        // 先确定角色索引（1-6）
-                        let animIdx = agent.avatar
-                            ? parseInt((agent.avatar.match(/_(\d+)$/) || [])[1] || '0', 10)
-                            : 0;
-                        if (!animIdx || animIdx < 1 || animIdx > 6) {
-                            const aid = String(agent.agentId || '');
-                            let hash = 0;
-                            for (let i = 0; i < aid.length; i++) hash = (hash * 31 + aid.charCodeAt(i)) >>> 0;
-                            animIdx = (hash % 6) + 1;
-                        }
-                        const animKey = `guest_anim_${animIdx}`;
-                        const animIdleKey = `guest_anim_${animIdx}_idle`;
-
-                        if (game.textures.exists(animKey) && game.anims.exists(animIdleKey)) {
-                            sprite = game.add.sprite(p.x, p.y, animKey).setOrigin(0.5, 1).setScale(4.0);
-                            sprite.anims.play(animIdleKey, true);
+                        // Arena player avatars: caw / rabbit / sheep
+                        const ARENA_AVATAR_KEYS = { caw: 'avatar_caw', rabbit: 'avatar_rabbit', sheep: 'avatar_sheep' };
+                        const arenaKey = ARENA_AVATAR_KEYS[agent.avatar];
+                        if (arenaKey && game.textures.exists(arenaKey)) {
+                            sprite = game.add.sprite(p.x, p.y, arenaKey).setOrigin(0.5, 1);
+                            sprite.setScale(90 / 384);
+                            const idleKey = `${arenaKey}_idle`;
+                            if (game.anims.exists(idleKey)) sprite.anims.play(idleKey, true);
+                            sprite._avatarType = 'arena';
+                            sprite._baseY      = p.y;
                         } else {
-                            const staticAvatarKey = agent.avatar && game.textures.exists(agent.avatar)
-                                ? agent.avatar
-                                : (() => {
-                                    const aid = String(agent.agentId || '');
-                                    let hash = 0;
-                                    for (let i = 0; i < aid.length; i++) hash = (hash * 31 + aid.charCodeAt(i)) >>> 0;
-                                    return GUEST_AVATARS[hash % GUEST_AVATARS.length];
-                                })();
-
-                            if (staticAvatarKey && game.textures.exists(staticAvatarKey)) {
-                                sprite = game.add.image(p.x, p.y, staticAvatarKey).setOrigin(0.5, 1).setScale(1.15);
+                            // Fallback: guest_anim spritesheet (legacy / AI agents)
+                            let animIdx = agent.avatar
+                                ? parseInt((agent.avatar.match(/guest_role_(\d+)/) || [])[1] || '0', 10)
+                                : 0;
+                            if (!animIdx || animIdx < 1 || animIdx > 6) {
+                                const aid = String(agent.agentId || '');
+                                let hash = 0;
+                                for (let i = 0; i < aid.length; i++) hash = (hash * 31 + aid.charCodeAt(i)) >>> 0;
+                                animIdx = (hash % 6) + 1;
+                            }
+                            const animKey     = `guest_anim_${animIdx}`;
+                            const animIdleKey = `guest_anim_${animIdx}_idle`;
+                            if (game.textures.exists(animKey) && game.anims.exists(animIdleKey)) {
+                                sprite = game.add.sprite(p.x, p.y, animKey).setOrigin(0.5, 1).setScale(4.0);
+                                sprite.anims.play(animIdleKey, true);
                             } else {
-                                sprite = game.add.text(p.x, p.y, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '30px' }).setOrigin(0.5, 1);
+                                const aid = String(agent.agentId || '');
+                                let hash = 0;
+                                for (let i = 0; i < aid.length; i++) hash = (hash * 31 + aid.charCodeAt(i)) >>> 0;
+                                const staticKey = GUEST_AVATARS[hash % GUEST_AVATARS.length];
+                                if (game.textures.exists(staticKey)) {
+                                    sprite = game.add.image(p.x, p.y, staticKey).setOrigin(0.5, 1).setScale(1.15);
+                                } else {
+                                    sprite = game.add.text(p.x, p.y, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '30px' }).setOrigin(0.5, 1);
+                                }
                             }
                         }
                     }
@@ -1338,9 +1794,9 @@
                 }
             });
 
-            // 删除消失的 agent + 清理其气泡/tween
+            // 删除消失的 agent + 清理其气泡/tween（arena 真实玩家由 renderArenaPlayersInScene 管理，跳过）
             Object.keys(guestSprites).forEach(id => {
-                if (!seenIds.has(id)) {
+                if (!seenIds.has(id) && !id.startsWith('real_')) {
                     guestSprites[id].sprite.destroy();
                     guestSprites[id].nameText.destroy();
                     delete guestSprites[id];
@@ -1645,7 +2101,7 @@
             // Flower spritesheet (65x65, 16 frames)
             this.load.spritesheet('flowers', '/static/flowers-spritesheet' + (supportsWebP ? '.webp' : '.png'), { frameWidth: 65, frameHeight: 65 });
 
-            // Guest/Demo agent sprites
+            // Guest/Demo agent sprites (legacy, kept for demo mode)
             this.load.image('guestagent1', '/static/guestagent1.webp?v={{VERSION_TIMESTAMP}}');
             this.load.image('guestagent2', '/static/guestagent2.webp?v={{VERSION_TIMESTAMP}}');
             this.load.spritesheet('guest_anim_1', '/static/guest_anim_1.webp?v={{VERSION_TIMESTAMP}}', { frameWidth: 32, frameHeight: 32 });
@@ -1656,6 +2112,11 @@
             this.load.spritesheet('guest_anim_6', '/static/guest_anim_6.webp?v={{VERSION_TIMESTAMP}}', { frameWidth: 32, frameHeight: 32 });
             this.load.image('demo_nika', '/static/demo_nika.webp?v={{VERSION_TIMESTAMP}}');
             this.load.image('demo_mercury', '/static/demo_mercury.webp?v={{VERSION_TIMESTAMP}}');
+            // Arena player avatars
+            // Arena avatar spritesheets (2752×1536, 6 cols × 4 rows → 458×384 per frame)
+            this.load.spritesheet('avatar_caw',    '/static/caw.webp',    { frameWidth: 458, frameHeight: 384 });
+            this.load.spritesheet('avatar_rabbit', '/static/rabbit.webp', { frameWidth: 458, frameHeight: 384 });
+            this.load.spritesheet('avatar_sheep',  '/static/sheep.webp',  { frameWidth: 458, frameHeight: 384 });
         }
 
         function create() {
@@ -1677,6 +2138,9 @@
             try { this.anims.create({ key: 'star_idle', frames: [], frameRate: 12, repeat: -1 }); } catch(e) {}
             try { this.anims.create({ key: 'star_researching', frames: [], frameRate: 12, repeat: -1 }); } catch(e) {}
 
+            // Expose Phaser tweens manager for DOM-side battle effects
+            window._phaserTweens = this.tweens;
+
             // 创建 6 个访客角色的循环 idle 动画（8帧循环）
             for (let i = 1; i <= 6; i++) {
                 this.anims.create({
@@ -1686,6 +2150,17 @@
                     repeat: -1
                 });
             }
+
+            // Arena avatar animations (spritesheet: 6 cols × 4 rows = 24 frames)
+            // Row 0 (frames 0-5): idle loop  |  Row 1 (frames 6-11): walk loop
+            ['caw', 'rabbit', 'sheep'].forEach(key => {
+                const texKey = `avatar_${key}`;
+                if (!this.textures.exists(texKey)) return;
+                try {
+                    this.anims.create({ key: `${texKey}_idle`, frames: this.anims.generateFrameNumbers(texKey, { start: 0,  end: 5  }), frameRate: 8,  repeat: -1 });
+                    this.anims.create({ key: `${texKey}_walk`, frames: this.anims.generateFrameNumbers(texKey, { start: 6,  end: 11 }), frameRate: 10, repeat: -1 });
+                } catch(e) {}
+            });
 
             // === 萝卜 🐎：小马精灵 ===
             this.anims.create({
@@ -1989,9 +2464,9 @@
                 coordsOverlay.style.top = (pointer.y + 18) + 'px';
             });
 
-            // 加载账本 & 挑战者面板
+            // 加载账本、挑战者面板 & 任务板（tasks first so _activeTaskLoserIds is ready before render）
             loadLedger();
-            loadChallengePanel();
+            loadTaskBoard().then(() => loadChallengePanel());
 
             fetchStatus();
             fetchGuestAgents();
@@ -1999,7 +2474,12 @@
 
         function update(time) {
             if (time - lastFetch > FETCH_INTERVAL) { fetchStatus(); lastFetch = time; }
-            if (time - lastGuestAgentsFetch > GUEST_AGENTS_FETCH_INTERVAL) { fetchGuestAgents(); loadChallengePanel(); loadLedger(); lastGuestAgentsFetch = time; }
+            if (time - lastGuestAgentsFetch > GUEST_AGENTS_FETCH_INTERVAL) {
+                fetchGuestAgents();
+                loadTaskBoard().then(() => loadChallengePanel()); // tasks first → _activeTaskLoserIds updated before render
+                loadLedger();
+                lastGuestAgentsFetch = time;
+            }
 
             // 兜底：非 idle 时确保机房动画在播，idle 时静止
             const effectiveStateForServer = pendingDesiredState || currentState;
@@ -2219,6 +2699,15 @@
             const effectiveState = pendingDesiredState || currentState;
             const stateInfo = STATES[effectiveState] || STATES.idle;
             const baseTarget = areas[stateInfo.area] || areas.breakroom;
+
+            // 发起/接受挑战时萝卜站定不动
+            if (window._horseBattleMode) {
+                if (window.horseSprite &&
+                    window.horseSprite.anims.currentAnim?.key !== 'luobo_idle') {
+                    window.horseSprite.anims.play('luobo_idle', true);
+                }
+                return;
+            }
 
             // 萝卜固定巡逻：在 x=488~894, y=550 之间来回
             if (!window._luoboPatrol) {

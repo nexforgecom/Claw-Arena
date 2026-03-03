@@ -132,6 +132,7 @@ def extract_memo_from_file(file_path):
         return "「昨日记录加载失败」\n\n「往者不可谏，来者犹可追。」"
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="/static")
+app.json.ensure_ascii = False  # return real Unicode in jsonify (not \uXXXX escapes)
 
 # Economy blueprint (Phase 1)
 from economy import bp as economy_bp
