@@ -381,6 +381,18 @@
                 padding: 6px 8px !important;
             }
         }
+
+        /* Token flow animations */
+        @keyframes token-gain {
+            0%   { background: rgba(52,211,153,0.35); transform: scale(1.1); }
+            100% { background: transparent; transform: scale(1); }
+        }
+        @keyframes token-loss {
+            0%   { background: rgba(248,113,113,0.35); transform: scale(0.92); }
+            100% { background: transparent; transform: scale(1); }
+        }
+        .token-gain-flash { animation: token-gain 0.7s ease-out; border-radius:2px; }
+        .token-loss-flash { animation: token-loss 0.7s ease-out; border-radius:2px; }
     </style>
 </head>
 <body>
@@ -398,18 +410,17 @@
     <div id="bottom-panels">
         <!-- Memo 面板 -->
         <div id="memo-panel">
-            <div id="memo-title">— 昨 日 小 记 —</div>
-            <div id="memo-date"></div>
+            <div id="memo-title" style="letter-spacing:4px;">— 账 本 —</div>
             <div class="memo-decoration">─ ─ ─ ─ ─</div>
-            <div id="memo-content">
-                <div id="memo-placeholder">加载中...</div>
+            <div id="ledger-content" style="overflow-y:auto;max-height:180px;font-family:ArkPixel,monospace;font-size:11px;padding:4px 2px;">
+                <div style="color:#9ca3af;text-align:center;padding:12px 0;">加载中...</div>
             </div>
             <div class="memo-decoration">─ ─ ─ ─ ─</div>
         </div>
         
         <!-- 状态控制栏 -->
         <div id="control-bar">
-            <div id="control-bar-title">Star 状态</div>
+            <div id="control-bar-title">Agent 状态</div>
             <div id="control-buttons">
                 <button onclick="setState('idle','待命')">待命</button>
                 <button onclick="setState('writing','工作中')">工作</button>
@@ -420,9 +431,9 @@
 
         <!-- Guest Agent 名单面板（右下角） -->
         <div id="guest-agent-panel">
-            <div id="guest-agent-panel-title">— 访 客 列 表 —</div>
+            <div id="guest-agent-panel-title">— 挑 战 者 列 表 —</div>
             <div id="guest-agent-list">
-                <div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">正在加载访客...</div>
+                <div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">加载中...</div>
             </div>
         </div>
     </div>
@@ -498,25 +509,45 @@
         let loadingProgressBar, loadingProgressContainer, loadingOverlay, loadingText;
 
         // Memo 相关函数
-        async function loadMemo() {
-            const memoDate = document.getElementById('memo-date');
-            const memoContent = document.getElementById('memo-content');
-            
+        async function loadLedger() {
+            const el = document.getElementById('ledger-content');
+            if (!el) return;
             try {
-                const response = await fetch('/yesterday-memo?t=' + Date.now(), { cache: 'no-store' });
-                const data = await response.json();
-                
-                if (data.success && data.memo) {
-                    memoDate.textContent = data.date || '';
-                    memoContent.innerHTML = data.memo.replace(/\n/g, '<br>');
-                } else {
-                    memoContent.innerHTML = '<div id="memo-placeholder">暂无昨日日记</div>';
+                const data = await fetch('/ledger?limit=30&t=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+                if (!Array.isArray(data) || data.length === 0) {
+                    el.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:12px 0;">暂无记录</div>';
+                    return;
                 }
-            } catch (e) {
-                console.error('加载 memo 失败:', e);
-                memoContent.innerHTML = '<div id="memo-placeholder">加载失败</div>';
+                const typeLabel = {
+                    init: '🌱初始化', bet_lock: '🔒锁仓', bet_return: '↩️退还',
+                    battle_win: '⚔️战胜', task_reward: '📋任务', walk_away: '🕊️释放',
+                    admin_adjust: '🔧调整'
+                };
+                const typeColor = {
+                    battle_win: '#fbbf24', task_reward: '#34d399', walk_away: '#60a5fa',
+                    admin_adjust: '#f87171', init: '#a78bfa', bet_return: '#94a3b8'
+                };
+                el.innerHTML = data.map(e => {
+                    const label = typeLabel[e.type] || e.type;
+                    const color = typeColor[e.type] || '#cbd5e1';
+                    const delta = e.delta > 0 ? `+${e.delta}` : e.delta < 0 ? `${e.delta}` : '';
+                    const deltaColor = e.delta > 0 ? '#34d399' : e.delta < 0 ? '#f87171' : '#94a3b8';
+                    const from = (e.from || '').replace('system','SYS');
+                    const to = (e.to || '');
+                    const ts = new Date(e.created_at * 1000).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+                    return `<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-bottom:1px solid #1e293b;">
+                        <span style="color:${color};min-width:72px;font-size:10px;">${label}</span>
+                        <span style="color:#94a3b8;font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${from}→${to}</span>
+                        <span style="color:${deltaColor};font-size:10px;min-width:28px;text-align:right;">${delta}</span>
+                        <span style="color:#475569;font-size:9px;min-width:36px;text-align:right;">${ts}</span>
+                    </div>`;
+                }).join('');
+            } catch(e) {
+                el.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:12px 0;">加载失败</div>';
             }
         }
+        // 兼容旧调用
+        async function loadMemo() { return loadLedger(); }
 
         // 更新加载进度
         function updateLoadingProgress() {
@@ -778,54 +809,246 @@
             return [...realVisitors, ...demoVisitors];
         }
 
-        function renderGuestAgentList() {
+        // ── 挑战者列表 & 经济数据 ─────────────────────────────────────────
+        let challengeEconomy = [];
+
+        let _prevTokens = {}; // agentId → last known tokens for flash detection
+
+        async function loadChallengePanel() {
             const list = document.getElementById('guest-agent-list');
             if (!list) return;
+            try {
+                const data = await fetch('/economy?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+                challengeEconomy = Array.isArray(data) ? data : [];
+            } catch(e) { challengeEconomy = []; }
+            renderChallengePanel();
+        }
 
-            const visitors = getMergedVisitors();
-            if (visitors.length === 0) {
-                list.innerHTML = '<div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">暂无访客</div>';
+        function renderChallengePanel() {
+            const list = document.getElementById('guest-agent-list');
+            if (!list) return;
+            if (challengeEconomy.length === 0) {
+                list.innerHTML = '<div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">无经济 Agent</div>';
                 return;
             }
-
-            list.innerHTML = visitors.map(agent => {
-                const name = agent.name || '未命名访客';
-                const authStatus = agent.authStatus || 'pending';
-                const state = agent.state || 'idle';
-                const statusMap = {
-                    approved: '已授权',
-                    pending: '待授权',
-                    rejected: '已拒绝',
-                    offline: '离线'
-                };
-                const stateMap = {
-                    idle: '待命',
-                    writing: '工作',
-                    researching: '调研',
-                    executing: '执行',
-                    syncing: '同步',
-                    error: '报警'
-                };
-
-                const statusText = statusMap[authStatus] || authStatus;
-                const stateText = stateMap[state] || state;
-                const subtitle = `${statusText} · ${stateText}`;
-
-                const pendingActions = `<button onclick="alert('交换 skill 功能开发中')">交换skill</button><button class="leave-btn" onclick="leaveGuestAgent('${agent.agentId}','${name}')">离开房间</button>`;
-
-                return `
-                  <div class="guest-agent-item" data-name="${name}">
-                    <div>
-                      <div class="guest-agent-name">${name}</div>
-                      <div style="font-size:11px;color:#cbd5e1;">${subtitle}</div>
-                    </div>
-                    <div class="guest-agent-buttons">
-                      ${pendingActions}
-                    </div>
-                  </div>
-                `;
+            const statusIcon = { idle:'🟢', in_battle:'⚔️', enslaved:'⛓️' };
+            const sorted = [...challengeEconomy].sort((a,b) => (b.tokens||0)-(a.tokens||0));
+            list.innerHTML = sorted.map((agent, i) => {
+                const icon = statusIcon[agent.status] || '⚪';
+                const contractInfo = agent.contract
+                    ? `<span style="color:#f59e0b;font-size:9px;"> ⛓️ master:${agent.contract.master_id} tasks:${agent.contract.tasks_remaining}</span>`
+                    : '';
+                const canChallenge = agent.status === 'idle';
+                const btn = canChallenge
+                    ? `<button onclick="openChallenge('${agent.id}','${agent.name}')" style="padding:2px 8px;font-family:ArkPixel,monospace;font-size:10px;background:#dc2626;border:none;color:#fff;cursor:pointer;border-radius:2px;">⚔️ 挑战</button>`
+                    : `<button disabled style="padding:2px 8px;font-family:ArkPixel,monospace;font-size:10px;background:#374151;border:none;color:#6b7280;border-radius:2px;">${icon} 忙碌</button>`;
+                const rankColor = i===0?'#fbbf24':i===1?'#94a3b8':i===2?'#b45309':'#475569';
+                return `<div data-econid="${agent.id}" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border-bottom:1px solid #1e293b;">
+                    <span style="color:${rankColor};font-size:10px;min-width:14px;">#${i+1}</span>
+                    <span style="color:#e2e8f0;font-size:11px;font-family:ArkPixel,monospace;flex:1;">${agent.name}</span>
+                    <span style="color:#fbbf24;font-size:11px;min-width:48px;">💰${agent.tokens??'?'}</span>
+                    ${contractInfo}
+                    ${btn}
+                </div>`;
             }).join('');
+
+            // Flash rows where tokens changed
+            requestAnimationFrame(() => {
+                for (const agent of sorted) {
+                    const prev = _prevTokens[agent.id];
+                    if (prev !== undefined && prev !== agent.tokens) {
+                        const row = list.querySelector(`[data-econid="${agent.id}"]`);
+                        if (row) {
+                            const cls = agent.tokens > prev ? 'token-gain-flash' : 'token-loss-flash';
+                            row.classList.remove('token-gain-flash','token-loss-flash');
+                            void row.offsetWidth; // reflow to restart animation
+                            row.classList.add(cls);
+                            setTimeout(() => row.classList.remove(cls), 800);
+
+                            // Floating delta number
+                            const delta = agent.tokens - prev;
+                            const rect = row.getBoundingClientRect();
+                            const floater = document.createElement('div');
+                            floater.style.cssText = `position:fixed;left:${rect.right - 60}px;top:${rect.top}px;font-family:ArkPixel,monospace;font-size:13px;font-weight:bold;color:${delta>0?'#34d399':'#f87171'};z-index:99998;pointer-events:none;`;
+                            floater.textContent = delta > 0 ? `+${delta}` : `${delta}`;
+                            document.body.appendChild(floater);
+                            floater.animate([
+                                { transform:'translateY(0)', opacity:1 },
+                                { transform:'translateY(-32px)', opacity:0 }
+                            ], { duration:900, easing:'ease-out', fill:'forwards' })
+                            .finished.then(() => floater.remove());
+                        }
+                    }
+                    _prevTokens[agent.id] = agent.tokens;
+                }
+            });
         }
+
+        function openChallenge(defenderId, defenderName) {
+            const myAgents = challengeEconomy.filter(a => a.status === 'idle' && a.id !== defenderId);
+            if (myAgents.length === 0) { alert('没有可用的挑战者（需要 idle 状态的 agent）'); return; }
+
+            // Build modal
+            const overlay = document.createElement('div');
+            overlay.id = 'challenge-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99998;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+              <div style="background:#0f172a;border:2px solid #fbbf24;border-radius:6px;padding:24px;min-width:280px;font-family:ArkPixel,monospace;color:#e2e8f0;">
+                <div style="font-size:16px;font-weight:bold;color:#fbbf24;margin-bottom:16px;">⚔️ 发起挑战</div>
+                <div style="margin-bottom:10px;">防守方: <span style="color:#f472b6;">${defenderName}</span></div>
+                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">选择挑战者:</div>
+                <select id="challenge-attacker" style="width:100%;padding:4px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:10px;">
+                  ${myAgents.map(a => `<option value="${a.id}">${a.name} (💰${a.tokens})</option>`).join('')}
+                </select>
+                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">押注 token:</div>
+                <input id="challenge-bet" type="number" min="1" value="10" style="width:100%;padding:4px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:16px;box-sizing:border-box;">
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                  <button onclick="document.getElementById('challenge-overlay').remove()" style="padding:6px 14px;background:#374151;border:none;color:#e2e8f0;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">取消</button>
+                  <button onclick="submitChallenge('${defenderId}')" style="padding:6px 14px;background:#dc2626;border:none;color:#fff;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">⚔️ 开战!</button>
+                </div>
+              </div>`;
+            document.body.appendChild(overlay);
+        }
+
+        async function submitChallenge(defenderId) {
+            const challengerId = document.getElementById('challenge-attacker')?.value;
+            const bet = parseInt(document.getElementById('challenge-bet')?.value || '10');
+            document.getElementById('challenge-overlay')?.remove();
+            if (!challengerId) return;
+            try {
+                const res = await fetch('/challenge', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ challenger_id: challengerId, defender_id: defenderId, bet })
+                }).then(r => r.json());
+
+                if (!res.ok) { showBattleResult('❌ ' + res.msg); return; }
+                const b = res.battle;
+                const moveEmoji = { rock:'🪨', scissors:'✂️', paper:'📄' };
+                const ma = moveEmoji[b.move_a] || b.move_a;
+                const mb = moveEmoji[b.move_b] || b.move_b;
+                const winnerName = b.winner === 'a' ? res.challenger?.name : b.winner === 'b' ? res.defender?.name : null;
+                const isContract = b.result && b.result.includes('contract');
+                const resultText = b.winner === 'draw'
+                    ? `${ma} vs ${mb} — 平局！`
+                    : `${ma} vs ${mb} — ${winnerName} 胜！${isContract ? '⛓️ 契约创建' : '💰 token 转移'}`;
+                showBattleResult(resultText);
+
+                // Token flow animation
+                if (b.winner !== 'draw' && !isContract) {
+                    const winnerId = b.winner === 'a' ? challengerId : defenderId;
+                    const loserId  = b.winner === 'a' ? defenderId   : challengerId;
+                    animateTokenFlow(loserId, winnerId, bet);
+                } else if (b.winner !== 'draw' && isContract) {
+                    const loserId = b.winner === 'a' ? defenderId : challengerId;
+                    animateChainAppear(loserId);
+                }
+
+                // Refresh panels
+                await loadChallengePanel();
+                await loadLedger();
+            } catch(e) { showBattleResult('❌ 请求失败: ' + e.message); }
+        }
+
+        // ── Battle result banner ───────────────────────────────────────────────
+        function showBattleResult(text) {
+            const el = document.createElement('div');
+            el.style.cssText = 'position:fixed;top:72px;left:50%;transform:translateX(-50%) scale(0.6);opacity:0;background:rgba(15,23,42,0.97);border:2px solid #fbbf24;color:#fbbf24;padding:12px 28px;font-family:ArkPixel,monospace;font-size:15px;border-radius:4px;z-index:99999;text-align:center;pointer-events:none;transition:transform 0.25s cubic-bezier(.34,1.56,.64,1),opacity 0.25s ease;';
+            el.textContent = text;
+            document.body.appendChild(el);
+            requestAnimationFrame(() => {
+                el.style.transform = 'translateX(-50%) scale(1)';
+                el.style.opacity = '1';
+            });
+            setTimeout(() => {
+                el.style.transform = 'translateX(-50%) scale(0.8)';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 300);
+            }, 3500);
+        }
+
+        // ── Token flow: floating coins from loser row → winner row ─────────────
+        function getAgentRowCenter(agentId) {
+            const list = document.getElementById('guest-agent-list');
+            if (!list) return null;
+            const rows = list.querySelectorAll('[data-econid]');
+            for (const row of rows) {
+                if (row.dataset.econid === agentId) {
+                    const rect = row.getBoundingClientRect();
+                    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                }
+            }
+            return null;
+        }
+
+        function animateTokenFlow(fromId, toId, amount) {
+            // Delay slightly so panel has re-rendered
+            setTimeout(() => {
+                const fromPos = getAgentRowCenter(fromId);
+                const toPos   = getAgentRowCenter(toId);
+                const count = Math.min(amount, 8); // max 8 coins per animation
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => spawnCoin(fromPos, toPos, amount), i * 80);
+                }
+            }, 120);
+        }
+
+        function spawnCoin(from, to, amount) {
+            if (!from || !to) {
+                // Fallback: just float a number in the panel area
+                const panel = document.getElementById('guest-agent-panel');
+                if (!panel) return;
+                const r = panel.getBoundingClientRect();
+                from = { x: r.left + r.width * 0.3, y: r.top + r.height * 0.6 };
+                to   = { x: r.left + r.width * 0.3, y: r.top + r.height * 0.2 };
+            }
+            const coin = document.createElement('div');
+            const jitter = (Math.random() - 0.5) * 24;
+            coin.style.cssText = `
+                position:fixed;
+                left:${from.x + jitter}px;
+                top:${from.y}px;
+                font-size:16px;
+                z-index:99997;
+                pointer-events:none;
+                transition:none;
+                user-select:none;
+            `;
+            coin.textContent = '💰';
+            document.body.appendChild(coin);
+
+            const dx = to.x - from.x + jitter;
+            const dy = to.y - from.y;
+            const dur = 600 + Math.random() * 200;
+
+            coin.animate([
+                { transform: 'translate(0,0) scale(1)',   opacity: 1 },
+                { transform: `translate(${dx/2}px,${dy/2 - 40}px) scale(1.3)`, opacity: 1, offset: 0.5 },
+                { transform: `translate(${dx}px,${dy}px) scale(0.5)`, opacity: 0 }
+            ], { duration: dur, easing: 'ease-in', fill: 'forwards' })
+            .finished.then(() => coin.remove());
+        }
+
+        function animateChainAppear(agentId) {
+            setTimeout(() => {
+                const pos = getAgentRowCenter(agentId);
+                if (!pos) return;
+                const el = document.createElement('div');
+                el.style.cssText = `position:fixed;left:${pos.x}px;top:${pos.y - 20}px;font-size:24px;z-index:99997;pointer-events:none;transform:translateX(-50%) scale(0);`;
+                el.textContent = '⛓️';
+                document.body.appendChild(el);
+                el.animate([
+                    { transform: 'translateX(-50%) scale(0)', opacity: 0 },
+                    { transform: 'translateX(-50%) scale(1.5)', opacity: 1, offset: 0.4 },
+                    { transform: 'translateX(-50%) scale(1)', opacity: 1, offset: 0.7 },
+                    { transform: 'translateX(-50%) scale(1)', opacity: 0 }
+                ], { duration: 1800, easing: 'ease-out', fill: 'forwards' })
+                .finished.then(() => el.remove());
+            }, 200);
+        }
+
+        // Keep legacy renderGuestAgentList as alias for compat
+        function renderGuestAgentList() { renderChallengePanel(); }
 
         function getAreaRect(area) {
             // 区域坐标（海辛提供，左上-右下；这里的 x/y 作为 sprite 底部锚点坐标来用）
@@ -1322,17 +1545,8 @@
             game = this;
             this.add.image(640, 360, 'office_bg');
 
-            // Place furniture: Sofa
-            // NOTE: coordinates are interpreted as the TOP-LEFT corner of the sprite
-            sofa = this.add.sprite(670, 144, 'sofa_busy').setOrigin(0, 0);
-            sofa.setDepth(10);
-
-            this.anims.create({
-                key: 'sofa_busy',
-                frames: this.anims.generateFrameNumbers('sofa_busy', { start: 0, end: 47 }),
-                frameRate: 12,
-                repeat: -1
-            });
+            // 沙发精灵已移除（背景图已包含）
+            sofa = { setTexture: () => {}, anims: { play: () => {}, stop: () => {} }, setVisible: () => {} };
             areas = {
                 door: { x: 640, y: 550 }, // 墙的门（偏下 1/3 位置）
                 writing: { x: 320, y: 360 }, // 左 1/3 中间（办公桌）
@@ -1341,19 +1555,10 @@
                 breakroom: { x: 640, y: 360 } // 中间 1/3（沙发
             };
 
-            // 创建 Star 角色精灵动画
-            this.anims.create({
-                key: 'star_idle',
-                frames: this.anims.generateFrameNumbers('star_idle', { start: 0, end: 29 }),
-                frameRate: 12,
-                repeat: -1
-            });
-            this.anims.create({
-                key: 'star_researching',
-                frames: this.anims.generateFrameNumbers('star_researching', { start: 0, end: 95 }),
-                frameRate: 12,
-                repeat: -1
-            });
+            // 萝卜马的占位动画（不需要 spritesheet，用 emoji）
+            // star_idle / star_researching anims stubs to prevent errors
+            try { this.anims.create({ key: 'star_idle', frames: [], frameRate: 12, repeat: -1 }); } catch(e) {}
+            try { this.anims.create({ key: 'star_researching', frames: [], frameRate: 12, repeat: -1 }); } catch(e) {}
 
             // 创建 6 个访客角色的循环 idle 动画（8帧循环）
             for (let i = 1; i <= 6; i++) {
@@ -1365,27 +1570,50 @@
                 });
             }
 
-            star = game.physics.add.sprite(areas.breakroom.x, areas.breakroom.y, 'star_idle');
-            star.setOrigin(0.5);
-            star.setScale(1.4);
-            star.setAlpha(0.95);
-            star.setDepth(20); // Put Star on top of everything
-            // Default: idle is represented by the sofa animation, so hide Star until non-idle state
-            star.setVisible(false);
-            star.anims.stop();
+            // === 萝卜 🐎：骑马走动的主角 ===
+            const horseContainer = game.add.container(areas.breakroom.x, areas.breakroom.y);
+            horseContainer.setDepth(20);
 
-            // Start sofa animation (default idle = sofa sitting)
-            if (game.textures.exists('sofa_busy')) {
-                sofa.setTexture('sofa_busy');
-                sofa.anims.play('sofa_busy', true);
-            }
+            const horseEmoji = game.add.text(0, 0, '🐎', {
+                fontFamily: 'ArkPixel, monospace, Apple Color Emoji, Segoe UI Emoji',
+                fontSize: '40px',
+            }).setOrigin(0.5, 0.8);
+            horseEmoji.name = 'horseEmoji';
 
-            // 加像素风小牌匾：海辛小龙虾的办公室
+            const horseLabel = game.add.text(0, -42, '萝卜', {
+                fontFamily: 'ArkPixel, monospace',
+                fontSize: '13px',
+                fill: '#ffd700',
+                stroke: '#000',
+                strokeThickness: 3,
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                padding: { x: 4, y: 2 }
+            }).setOrigin(0.5);
+
+            horseContainer.add([horseEmoji, horseLabel]);
+            window.horseContainer = horseContainer;
+            window.horseEmoji = horseEmoji;
+
+            // star shim — all existing movement code works unchanged
+            star = {
+                x: horseContainer.x,
+                y: horseContainer.y,
+                setPosition: (x, y) => { horseContainer.setPosition(x, y); star.x = x; star.y = y; },
+                setY: (y) => { horseContainer.setPosition(horseContainer.x, y); star.y = y; },
+                setVisible: () => {}, // 马永远可见
+                setAlpha: () => {},
+                setDepth: (d) => horseContainer.setDepth(d),
+                setScale: () => {},
+                anims: { play: () => {}, stop: () => {}, isPlaying: false, currentAnim: null },
+                body: { velocity: { x: 0, y: 0 }, setVelocity: () => {} },
+            };
+
+            // 加像素风小牌匾：萝卜的西部马厩
             const plaqueX = config.width / 2;
             const plaqueY = config.height - 36;
             const plaqueBg = game.add.rectangle(plaqueX, plaqueY, 420, 44, 0x5d4037);
             plaqueBg.setStrokeStyle(3, 0x3e2723);
-            const plaqueText = game.add.text(plaqueX, plaqueY, '海辛小龙虾的办公室', {
+            const plaqueText = game.add.text(plaqueX, plaqueY, '萝卜的西部马厩', {
                 fontFamily: 'ArkPixel, monospace',
                 fontSize: '18px',
                 fill: '#ffd700',
@@ -1397,114 +1625,10 @@
             game.add.text(plaqueX - 190, plaqueY, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '20px' }).setOrigin(0.5);
             game.add.text(plaqueX + 190, plaqueY, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '20px' }).setOrigin(0.5);
 
-            // Random plant at (565,178) (frame 0-15, 160x160 each)
-            const plantFrameCount = 16;
-            const randomPlantFrame = Math.floor(Math.random() * plantFrameCount);
-            const plant = game.add.sprite(565, 178, 'plants', randomPlantFrame).setOrigin(0.5);
-            plant.setDepth(5);
-            plant.setInteractive({ useHandCursor: true });
-            // Expose to global for click handler
-            window.plantSprite = plant;
-            window.plantFrameCount = plantFrameCount;
-            plant.on('pointerdown', () => {
-                const next = Math.floor(Math.random() * window.plantFrameCount);
-                window.plantSprite.setFrame(next);
-            });
 
-            // Random plant at (230,185) (frame 0-15, 160x160 each)
-            const plant2Frame = Math.floor(Math.random() * plantFrameCount);
-            const plant2 = game.add.sprite(230, 185, 'plants', plant2Frame).setOrigin(0.5);
-            plant2.setDepth(5);
-            plant2.setInteractive({ useHandCursor: true });
-            // Expose to global for click handler
-            window.plantSprite2 = plant2;
-            plant2.on('pointerdown', () => {
-                const next = Math.floor(Math.random() * window.plantFrameCount);
-                window.plantSprite2.setFrame(next);
-            });
+            // 装饰精灵已移除（背景图已包含所有家具）
 
-            // Random plant at (977,496) (frame 0-15, 160x160 each)
-            const plant3Frame = Math.floor(Math.random() * plantFrameCount);
-            const plant3 = game.add.sprite(977, 496, 'plants', plant3Frame).setOrigin(0.5);
-            plant3.setDepth(5);
-            plant3.setInteractive({ useHandCursor: true });
-            // Expose to global for click handler
-            window.plantSprite3 = plant3;
-            plant3.on('pointerdown', () => {
-                const next = Math.floor(Math.random() * window.plantFrameCount);
-                window.plantSprite3.setFrame(next);
-            });
-
-            // Random poster at (252,66) (random frame from spritesheet)
-            const postersFrameCount = 32; // 640x1280 with 160x160 frames => 4x8 = 32
-            const randomPosterFrame = Math.floor(Math.random() * postersFrameCount);
-            const poster = game.add.sprite(252, 66, 'posters', randomPosterFrame).setOrigin(0.5);
-            poster.setDepth(4);
-            poster.setInteractive({ useHandCursor: true });
-            // Expose to global for click handler
-            window.posterSprite = poster;
-            window.posterFrameCount = postersFrameCount;
-            poster.on('pointerdown', () => {
-                const next = Math.floor(Math.random() * window.posterFrameCount);
-                window.posterSprite.setFrame(next);
-            });
-
-            // Random cat at (94,557) (frame 0-15, 160x160 each)
-            const catsFrameCount = 16; // 4x4 grid
-            const randomCatFrame = Math.floor(Math.random() * catsFrameCount);
-            const cat = game.add.sprite(94, 557, 'cats', randomCatFrame).setOrigin(0.5);
-            cat.setDepth(2000); // top layer
-            cat.setInteractive({ useHandCursor: true });
-            // Expose to global for click handler
-            window.catSprite = cat;
-            window.catsFrameCount = catsFrameCount;
-            cat.on('pointerdown', () => {
-                const next = Math.floor(Math.random() * window.catsFrameCount);
-                window.catSprite.setFrame(next);
-            });
-
-            // Coffee machine at (563,330)
-            this.anims.create({
-                key: 'coffee_machine',
-                frames: this.anims.generateFrameNumbers('coffee_machine', { start: 0, end: 95 }),
-                frameRate: 12.5,
-                repeat: -1
-            });
-            const coffeeMachine = this.add.sprite(659, 397, 'coffee_machine').setOrigin(0.5);
-            coffeeMachine.setDepth(99);
-            coffeeMachine.anims.play('coffee_machine', true);
-
-            // Server room animation
-            this.anims.create({
-                key: 'serverroom_on',
-                frames: this.anims.generateFrameNumbers('serverroom', { start: 0, end: 39 }),
-                frameRate: 6,
-                repeat: -1
-            });
-            serverroom = this.add.sprite(1021, 142, 'serverroom', 0).setOrigin(0.5);
-            serverroom.setDepth(2);
-            // 默认 idle: 静止第0帧
-            serverroom.anims.stop();
-            serverroom.setFrame(0);
-
-            // Desk at (218,417) (v2)
-            const desk = this.add.image(218, 417, 'desk_v2').setOrigin(0.5);
-            desk.setDepth(1001);  // desk above starWorking
-
-            // Random flower pot at (310,405) (65x65 frames, top layer)
-            const flowerFrameCount = 16; // 4x4 65x65 frames
-            const randomFlowerFrame = Math.floor(Math.random() * flowerFrameCount);
-            const flower = this.add.sprite(310, 405, 'flowers', randomFlowerFrame).setOrigin(0.5);
-            flower.setDepth(1100); // highest among desk/starWorking
-            flower.setInteractive({ useHandCursor: true });
-            window.flowerSprite = flower;
-            window.flowerFrameCount = flowerFrameCount;
-            flower.on('pointerdown', () => {
-                const next = Math.floor(Math.random() * window.flowerFrameCount);
-                window.flowerSprite.setFrame(next);
-            });
-
-            // Star working at desk (217,333)
+                        // Star working at desk (217,333)
             this.anims.create({
                 key: 'star_working',
                 frames: this.anims.generateFrameNumbers('star_working', { start: 0, end: 191 }),
@@ -1528,12 +1652,8 @@
             errorBug.anims.play('error_bug', true);
             window.errorBug = errorBug;
             window.errorBugDir = 1; // 1 -> to right, -1 -> to left
-            const starWorking = this.add.sprite(217, 333, 'star_working', 0).setOrigin(0.5);
-            starWorking.setVisible(false);
-            starWorking.setScale(1.32);  // +10% (from 1.2 → 1.32)
-            starWorking.setDepth(900);  // starWorking under desk so desk partially covers it
-            // Store reference to starWorking for state logic
-            window.starWorking = starWorking;
+            // starWorking sprite removed — 马厩不需要桌前工作动画
+            window.starWorking = { setVisible: () => {}, anims: { play: () => {}, stop: () => {} } };
 
             // Sync animation sprite at (1157,592)
             this.anims.create({
@@ -1736,8 +1856,9 @@
                 coordsOverlay.style.top = (pointer.y + 18) + 'px';
             });
 
-            // 加载昨日 memo
-            loadMemo();
+            // 加载账本 & 挑战者面板
+            loadLedger();
+            loadChallengePanel();
 
             fetchStatus();
             fetchGuestAgents();
@@ -1745,7 +1866,7 @@
 
         function update(time) {
             if (time - lastFetch > FETCH_INTERVAL) { fetchStatus(); lastFetch = time; }
-            if (time - lastGuestAgentsFetch > GUEST_AGENTS_FETCH_INTERVAL) { fetchGuestAgents(); lastGuestAgentsFetch = time; }
+            if (time - lastGuestAgentsFetch > GUEST_AGENTS_FETCH_INTERVAL) { fetchGuestAgents(); loadChallengePanel(); loadLedger(); lastGuestAgentsFetch = time; }
 
             // 兜底：非 idle 时确保机房动画在播，idle 时静止
             const effectiveStateForServer = pendingDesiredState || currentState;
@@ -1974,8 +2095,10 @@
 
             if (dist > 3) {
                 // Move toward current target
-                star.x += (dx / dist) * speed;
-                star.y += (dy / dist) * speed;
+                const nX = star.x + (dx / dist) * speed;
+                const nY = star.y + (dy / dist) * speed;
+                star.setPosition(nX, nY);
+                if (window.horseEmoji) window.horseEmoji.setFlipX(dx < 0);
                 star.setY(star.y + wobble);
                 isMoving = true;
             } else {

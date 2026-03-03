@@ -133,6 +133,10 @@ def extract_memo_from_file(file_path):
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="/static")
 
+# Economy blueprint (Phase 1)
+from economy import bp as economy_bp
+app.register_blueprint(economy_bp)
+
 # Guard join-agent critical section to enforce per-key concurrency under parallel requests
 join_lock = threading.Lock()
 
@@ -814,4 +818,4 @@ if __name__ == "__main__":
     print("Listening on: http://0.0.0.0:18791")
     print("=" * 50)
     
-    app.run(host="0.0.0.0", port=18791, debug=False)
+    app.run(host="0.0.0.0", port=18795, debug=False)

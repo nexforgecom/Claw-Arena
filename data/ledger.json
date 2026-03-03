@@ -1,0 +1,1148 @@
+[
+  {
+    "id": "ledger_000001",
+    "type": "init",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 100,
+    "created_at": 1772515051,
+    "note": "agent created"
+  },
+  {
+    "id": "ledger_000002",
+    "type": "init",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 100,
+    "created_at": 1772515051,
+    "note": "agent created"
+  },
+  {
+    "id": "ledger_000003",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 50,
+    "created_at": 1772515051,
+    "note": "set 100->150"
+  },
+  {
+    "id": "ledger_000004",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": -50,
+    "created_at": 1772515221,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000005",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515221,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000006",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515221,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000007",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515221,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000008",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515221,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000009",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515221,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000010",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000011",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000012",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000013",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000014",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000015",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000016",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000017",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000018",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000019",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000020",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000021",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000022",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000023",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000024",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000025",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515222,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000026",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000027",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000028",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000029",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000030",
+    "type": "battle_win",
+    "from": "agent_b",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "battle_id": "battle_42bf6e0f",
+    "note": "contract_created",
+    "tasks": 3
+  },
+  {
+    "id": "ledger_000031",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000032",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000033",
+    "type": "battle_win",
+    "from": "agent_b",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "battle_id": "battle_d078012d",
+    "note": "contract_created",
+    "tasks": 3
+  },
+  {
+    "id": "ledger_000034",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000035",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000036",
+    "type": "battle_win",
+    "from": "agent_a",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515249,
+    "battle_id": "battle_4b000209",
+    "note": "contract_created",
+    "tasks": 3
+  },
+  {
+    "id": "ledger_000037",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000038",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000039",
+    "type": "battle_win",
+    "from": "agent_b",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "battle_id": "battle_3ed1c128",
+    "note": "contract_created",
+    "tasks": 3
+  },
+  {
+    "id": "ledger_000040",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000041",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515249,
+    "note": "reset"
+  },
+  {
+    "id": "ledger_000042",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772515249,
+    "battle_id": "battle_b2d4b5d8"
+  },
+  {
+    "id": "ledger_000043",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_b",
+    "delta": 10,
+    "created_at": 1772515249,
+    "battle_id": "battle_b2d4b5d8"
+  },
+  {
+    "id": "ledger_000044",
+    "type": "init",
+    "from": "system",
+    "to": "claude_1",
+    "delta": 100,
+    "created_at": 1772515260,
+    "note": "agent created"
+  },
+  {
+    "id": "ledger_000045",
+    "type": "init",
+    "from": "system",
+    "to": "claude_2",
+    "delta": 100,
+    "created_at": 1772515260,
+    "note": "agent created"
+  },
+  {
+    "id": "ledger_000046",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_1",
+    "delta": 0,
+    "created_at": 1772515260,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000047",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_2",
+    "delta": 0,
+    "created_at": 1772515260,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000048",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772515260,
+    "battle_id": "battle_17730f83"
+  },
+  {
+    "id": "ledger_000049",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_2",
+    "delta": 10,
+    "created_at": 1772515260,
+    "battle_id": "battle_17730f83"
+  },
+  {
+    "id": "ledger_000050",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_1",
+    "delta": 0,
+    "created_at": 1772515260,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000051",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_2",
+    "delta": 0,
+    "created_at": 1772515260,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000052",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772515260,
+    "battle_id": "battle_c451c19e"
+  },
+  {
+    "id": "ledger_000053",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_2",
+    "delta": 10,
+    "created_at": 1772515260,
+    "battle_id": "battle_c451c19e"
+  },
+  {
+    "id": "ledger_000054",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_1",
+    "delta": 0,
+    "created_at": 1772515260,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000055",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_2",
+    "delta": 0,
+    "created_at": 1772515260,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000056",
+    "type": "battle_win",
+    "from": "claude_1",
+    "to": "claude_2",
+    "delta": 10,
+    "created_at": 1772515260,
+    "battle_id": "battle_5673c556"
+  },
+  {
+    "id": "ledger_000057",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772515260,
+    "note": "set 90->100"
+  },
+  {
+    "id": "ledger_000058",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_2",
+    "delta": -10,
+    "created_at": 1772515260,
+    "note": "set 110->100"
+  },
+  {
+    "id": "ledger_000059",
+    "type": "battle_win",
+    "from": "claude_2",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772515260,
+    "battle_id": "battle_c7cfcc09"
+  },
+  {
+    "id": "ledger_000060",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_1",
+    "delta": -10,
+    "created_at": 1772515260,
+    "note": "set 110->100"
+  },
+  {
+    "id": "ledger_000061",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "claude_2",
+    "delta": 10,
+    "created_at": 1772515260,
+    "note": "set 90->100"
+  },
+  {
+    "id": "ledger_000062",
+    "type": "battle_win",
+    "from": "claude_2",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772515260,
+    "battle_id": "battle_bdddf680"
+  },
+  {
+    "id": "ledger_000063",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000064",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000065",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772515375,
+    "battle_id": "battle_a29c5bc6"
+  },
+  {
+    "id": "ledger_000066",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_b",
+    "delta": 10,
+    "created_at": 1772515375,
+    "battle_id": "battle_a29c5bc6"
+  },
+  {
+    "id": "ledger_000067",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000068",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000069",
+    "type": "battle_win",
+    "from": "agent_a",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "battle_id": "battle_e3f0b231",
+    "note": "contract_created",
+    "tasks": 3
+  },
+  {
+    "id": "ledger_000070",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000071",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000072",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000073",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000074",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000075",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000076",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000077",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000078",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000079",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000080",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000081",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515375,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000082",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000083",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000084",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000085",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000086",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000087",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000088",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000089",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000090",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000091",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000092",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000093",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000094",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000095",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000096",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000097",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000098",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000099",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000100",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000101",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000102",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000103",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000104",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000105",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000106",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000107",
+    "type": "admin_adjust",
+    "from": "system",
+    "to": "agent_b",
+    "delta": 0,
+    "created_at": 1772515376,
+    "note": "set 100->100"
+  },
+  {
+    "id": "ledger_000108",
+    "type": "task_reward",
+    "from": "agent_a",
+    "to": "agent_b",
+    "delta": 10,
+    "created_at": 1772515423,
+    "tasks_before": 3
+  },
+  {
+    "id": "ledger_000109",
+    "type": "walk_away",
+    "from": "agent_b",
+    "to": "agent_a",
+    "delta": 20,
+    "created_at": 1772515423,
+    "tasks_remaining": 2
+  },
+  {
+    "id": "ledger_000110",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_b",
+    "delta": 10,
+    "created_at": 1772515842,
+    "battle_id": "battle_6bfca722"
+  },
+  {
+    "id": "ledger_000111",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772515842,
+    "battle_id": "battle_6bfca722"
+  },
+  {
+    "id": "ledger_000112",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_b",
+    "delta": 10,
+    "created_at": 1772515848,
+    "battle_id": "battle_2a022daf"
+  },
+  {
+    "id": "ledger_000113",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772515848,
+    "battle_id": "battle_2a022daf"
+  },
+  {
+    "id": "ledger_000114",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772515851,
+    "battle_id": "battle_f52daee5"
+  },
+  {
+    "id": "ledger_000115",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772515851,
+    "battle_id": "battle_f52daee5"
+  },
+  {
+    "id": "ledger_000116",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772515853,
+    "battle_id": "battle_0cd85460"
+  },
+  {
+    "id": "ledger_000117",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_b",
+    "delta": 10,
+    "created_at": 1772515853,
+    "battle_id": "battle_0cd85460"
+  },
+  {
+    "id": "ledger_000118",
+    "type": "battle_win",
+    "from": "agent_b",
+    "to": "agent_a",
+    "delta": 0,
+    "created_at": 1772516054,
+    "battle_id": "battle_380ee420",
+    "note": "contract_created",
+    "tasks": 3
+  },
+  {
+    "id": "ledger_000119",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772518156,
+    "battle_id": "battle_f0656c69"
+  },
+  {
+    "id": "ledger_000120",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772518156,
+    "battle_id": "battle_f0656c69"
+  },
+  {
+    "id": "ledger_000121",
+    "type": "battle_win",
+    "from": "claude_1",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772518160,
+    "battle_id": "battle_11430908"
+  },
+  {
+    "id": "ledger_000122",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772518165,
+    "battle_id": "battle_a391de4a"
+  },
+  {
+    "id": "ledger_000123",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772518165,
+    "battle_id": "battle_a391de4a"
+  },
+  {
+    "id": "ledger_000124",
+    "type": "battle_win",
+    "from": "agent_a",
+    "to": "claude_2",
+    "delta": 10,
+    "created_at": 1772518169,
+    "battle_id": "battle_e998f32e"
+  },
+  {
+    "id": "ledger_000125",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 28,
+    "created_at": 1772518179,
+    "battle_id": "battle_473516ba"
+  },
+  {
+    "id": "ledger_000126",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_2",
+    "delta": 28,
+    "created_at": 1772518179,
+    "battle_id": "battle_473516ba"
+  }
+]

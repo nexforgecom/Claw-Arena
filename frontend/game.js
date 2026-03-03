@@ -200,6 +200,49 @@ const CAT_BUBBLE_INTERVAL = 18000;
 let lastCatBubble = 0;
 const TYPEWRITER_DELAY = 50;
 let agents = {}; // agentId -> sprite/container
+let economyData = {}; // agentId -> economy agent (tokens, status, contract)
+
+function fetchEconomy() {
+  fetch('/economy?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => r.json())
+    .then(data => {
+      if (!Array.isArray(data)) return;
+      economyData = {};
+      for (const a of data) economyData[a.id] = a;
+      // refresh token badges on existing agents
+      for (const [agentId, container] of Object.entries(agents)) {
+        updateTokenBadge(container, economyData[agentId]);
+      }
+    })
+    .catch(() => {});
+}
+
+function updateTokenBadge(container, econ) {
+  // find or create token badge (index 3 in container children)
+  let badge = container.list ? container.list.find(c => c.name === 'tokenBadge') : null;
+  if (!econ) {
+    if (badge) badge.setVisible(false);
+    return;
+  }
+  const tokens = econ.tokens ?? '?';
+  const label = '💰' + tokens;
+  if (!badge) {
+    badge = game.add.text(0, -54, label, {
+      fontFamily: 'ArkPixel, monospace',
+      fontSize: '11px',
+      fill: '#fbbf24',
+      stroke: '#000',
+      strokeThickness: 2,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      padding: { x: 3, y: 1 }
+    }).setOrigin(0.5);
+    badge.name = 'tokenBadge';
+    container.add(badge);
+  } else {
+    badge.setText(label);
+    badge.setVisible(true);
+  }
+}
 let lastAgentsFetch = 0;
 const AGENTS_FETCH_INTERVAL = 2500;
 
@@ -313,55 +356,68 @@ function create() {
   game = this;
   this.add.image(640, 360, 'office_bg');
 
-  // === 沙发（来自 LAYOUT）===
-  sofa = this.add.sprite(
-    LAYOUT.furniture.sofa.x,
-    LAYOUT.furniture.sofa.y,
-    'sofa_busy'
-  ).setOrigin(LAYOUT.furniture.sofa.origin.x, LAYOUT.furniture.sofa.origin.y);
-  sofa.setDepth(LAYOUT.furniture.sofa.depth);
-
-  this.anims.create({
-    key: 'sofa_busy',
-    frames: this.anims.generateFrameNumbers('sofa_busy', { start: 0, end: 47 }),
-    frameRate: 12,
-    repeat: -1
-  });
-
   areas = LAYOUT.areas;
 
-  this.anims.create({
-    key: 'star_idle',
-    frames: this.anims.generateFrameNumbers('star_idle', { start: 0, end: 29 }),
-    frameRate: 12,
-    repeat: -1
-  });
-  this.anims.create({
-    key: 'star_researching',
-    frames: this.anims.generateFrameNumbers('star_researching', { start: 0, end: 95 }),
-    frameRate: 12,
-    repeat: -1
-  });
+  // === 萝卜：会走动的马 🐎 ===
+  // 用 Phaser Container 包住 emoji + 名字标签，复用 star 的移动逻辑
+  const horseContainer = game.add.container(areas.breakroom.x, areas.breakroom.y);
+  horseContainer.setDepth(20);
 
-  star = game.physics.add.sprite(areas.breakroom.x, areas.breakroom.y, 'star_idle');
-  star.setOrigin(0.5);
-  star.setScale(1.4);
-  star.setAlpha(0.95);
-  star.setDepth(20);
-  star.setVisible(false);
-  star.anims.stop();
+  const horseEmoji = game.add.text(0, 0, '🐎', {
+    fontFamily: 'ArkPixel, monospace, Apple Color Emoji, Segoe UI Emoji',
+    fontSize: '36px',
+  }).setOrigin(0.5, 0.8);
+  horseEmoji.name = 'horseEmoji';
 
-  if (game.textures.exists('sofa_busy')) {
-    sofa.setTexture('sofa_busy');
-    sofa.anims.play('sofa_busy', true);
-  }
+  const horseLabel = game.add.text(0, -38, '萝卜', {
+    fontFamily: 'ArkPixel, monospace',
+    fontSize: '13px',
+    fill: '#ffd700',
+    stroke: '#000',
+    strokeThickness: 3,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: { x: 4, y: 2 }
+  }).setOrigin(0.5);
+  horseLabel.name = 'horseLabel';
+
+  horseContainer.add([horseEmoji, horseLabel]);
+  window.horseContainer = horseContainer;
+
+  // Shim: make 'star' point to horseContainer so all existing movement code works
+  star = {
+    x: horseContainer.x,
+    y: horseContainer.y,
+    setPosition: (x, y) => { horseContainer.setPosition(x, y); star.x = x; star.y = y; },
+    setY: (y) => { horseContainer.setPosition(horseContainer.x, y); star.y = y; },
+    setVisible: (v) => horseContainer.setVisible(true), // 马永远可见
+    setAlpha: () => {},
+    setDepth: (d) => horseContainer.setDepth(d),
+    setScale: () => {},
+    anims: { play: () => {}, stop: () => {}, isPlaying: false },
+    body: { velocity: { x: 0, y: 0 }, setVelocity: (vx, vy) => {} },
+    _horseFlipTimer: 0,
+    _lastVx: 0,
+  };
+
+  // Horse emoji flip on direction change
+  window._horseLastX = horseContainer.x;
+  window._horseFlipInterval = setInterval(() => {
+    const dx = horseContainer.x - window._horseLastX;
+    if (Math.abs(dx) > 1) {
+      horseEmoji.setFlipX(dx < 0);
+    }
+    window._horseLastX = horseContainer.x;
+  }, 100);
+
+  // Dummy sofa ref (referenced in state change code)
+  sofa = { setTexture: () => {}, anims: { play: () => {}, stop: () => {} }, setVisible: () => {} };
 
   // === 牌匾（来自 LAYOUT）===
   const plaqueX = LAYOUT.plaque.x;
   const plaqueY = LAYOUT.plaque.y;
   const plaqueBg = game.add.rectangle(plaqueX, plaqueY, LAYOUT.plaque.width, LAYOUT.plaque.height, 0x5d4037);
   plaqueBg.setStrokeStyle(3, 0x3e2723);
-  const plaqueText = game.add.text(plaqueX, plaqueY, '海辛小龙虾的办公室', {
+  const plaqueText = game.add.text(plaqueX, plaqueY, '萝卜的西部马厩', {
     fontFamily: 'ArkPixel, monospace',
     fontSize: '18px',
     fill: '#ffd700',
@@ -372,63 +428,7 @@ function create() {
   game.add.text(plaqueX - 190, plaqueY, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '20px' }).setOrigin(0.5);
   game.add.text(plaqueX + 190, plaqueY, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '20px' }).setOrigin(0.5);
 
-  // === 植物们（来自 LAYOUT）===
-  const plantFrameCount = 16;
-  for (let i = 0; i < LAYOUT.furniture.plants.length; i++) {
-    const p = LAYOUT.furniture.plants[i];
-    const randomPlantFrame = Math.floor(Math.random() * plantFrameCount);
-    const plant = game.add.sprite(p.x, p.y, 'plants', randomPlantFrame).setOrigin(0.5);
-    plant.setDepth(p.depth);
-    plant.setInteractive({ useHandCursor: true });
-    window[`plantSprite${i === 0 ? '' : i + 1}`] = plant;
-    plant.on('pointerdown', (() => {
-      const next = Math.floor(Math.random() * plantFrameCount);
-      plant.setFrame(next);
-    }));
-  }
-
-  // === 海报（来自 LAYOUT）===
-  const postersFrameCount = 32;
-  const randomPosterFrame = Math.floor(Math.random() * postersFrameCount);
-  const poster = game.add.sprite(LAYOUT.furniture.poster.x, LAYOUT.furniture.poster.y, 'posters', randomPosterFrame).setOrigin(0.5);
-  poster.setDepth(LAYOUT.furniture.poster.depth);
-  poster.setInteractive({ useHandCursor: true });
-  window.posterSprite = poster;
-  window.posterFrameCount = postersFrameCount;
-  poster.on('pointerdown', () => {
-    const next = Math.floor(Math.random() * window.posterFrameCount);
-    window.posterSprite.setFrame(next);
-  });
-
-  // === 小猫（来自 LAYOUT）===
-  const catsFrameCount = 16;
-  const randomCatFrame = Math.floor(Math.random() * catsFrameCount);
-  const cat = game.add.sprite(LAYOUT.furniture.cat.x, LAYOUT.furniture.cat.y, 'cats', randomCatFrame).setOrigin(LAYOUT.furniture.cat.origin.x, LAYOUT.furniture.cat.origin.y);
-  cat.setDepth(LAYOUT.furniture.cat.depth);
-  cat.setInteractive({ useHandCursor: true });
-  window.catSprite = cat;
-  window.catsFrameCount = catsFrameCount;
-  cat.on('pointerdown', () => {
-    const next = Math.floor(Math.random() * window.catsFrameCount);
-    window.catSprite.setFrame(next);
-  });
-
-  // === 咖啡机（来自 LAYOUT）===
-  this.anims.create({
-    key: 'coffee_machine',
-    frames: this.anims.generateFrameNumbers('coffee_machine', { start: 0, end: 95 }),
-    frameRate: 12.5,
-    repeat: -1
-  });
-  const coffeeMachine = this.add.sprite(
-    LAYOUT.furniture.coffeeMachine.x,
-    LAYOUT.furniture.coffeeMachine.y,
-    'coffee_machine'
-  ).setOrigin(LAYOUT.furniture.coffeeMachine.origin.x, LAYOUT.furniture.coffeeMachine.origin.y);
-  coffeeMachine.setDepth(LAYOUT.furniture.coffeeMachine.depth);
-  coffeeMachine.anims.play('coffee_machine', true);
-
-  // === 服务器区（来自 LAYOUT）===
+  // === 服务器区保留（闪灯效果）===
   this.anims.create({
     key: 'serverroom_on',
     frames: this.anims.generateFrameNumbers('serverroom', { start: 0, end: 39 }),
@@ -444,32 +444,6 @@ function create() {
   serverroom.setDepth(LAYOUT.furniture.serverroom.depth);
   serverroom.anims.stop();
   serverroom.setFrame(0);
-
-  // === 新办公桌（来自 LAYOUT，强制透明 PNG）===
-  const desk = this.add.image(
-    LAYOUT.furniture.desk.x,
-    LAYOUT.furniture.desk.y,
-    'desk_v2'
-  ).setOrigin(LAYOUT.furniture.desk.origin.x, LAYOUT.furniture.desk.origin.y);
-  desk.setDepth(LAYOUT.furniture.desk.depth);
-
-  // === 花盆（来自 LAYOUT）===
-  const flowerFrameCount = 16;
-  const randomFlowerFrame = Math.floor(Math.random() * flowerFrameCount);
-  const flower = this.add.sprite(
-    LAYOUT.furniture.flower.x,
-    LAYOUT.furniture.flower.y,
-    'flowers',
-    randomFlowerFrame
-  ).setOrigin(LAYOUT.furniture.flower.origin.x, LAYOUT.furniture.flower.origin.y);
-  flower.setDepth(LAYOUT.furniture.flower.depth);
-  flower.setInteractive({ useHandCursor: true });
-  window.flowerSprite = flower;
-  window.flowerFrameCount = flowerFrameCount;
-  flower.on('pointerdown', () => {
-    const next = Math.floor(Math.random() * window.flowerFrameCount);
-    window.flowerSprite.setFrame(next);
-  });
 
   // === Star 在桌前工作（来自 LAYOUT）===
   this.anims.create({
@@ -499,16 +473,8 @@ function create() {
   window.errorBug = errorBug;
   window.errorBugDir = 1;
 
-  const starWorking = this.add.sprite(
-    LAYOUT.furniture.starWorking.x,
-    LAYOUT.furniture.starWorking.y,
-    'star_working',
-    0
-  ).setOrigin(LAYOUT.furniture.starWorking.origin.x, LAYOUT.furniture.starWorking.origin.y);
-  starWorking.setVisible(false);
-  starWorking.setScale(LAYOUT.furniture.starWorking.scale);
-  starWorking.setDepth(LAYOUT.furniture.starWorking.depth);
-  window.starWorking = starWorking;
+  // starWorking sprite removed — horse (萝卜) is the main character now
+  window.starWorking = { setVisible: () => {}, anims: { play: () => {}, stop: () => {} } };
 
   // === 同步动画（来自 LAYOUT）===
   this.anims.create({
@@ -588,7 +554,7 @@ function create() {
 
 function update(time) {
   if (time - lastFetch > FETCH_INTERVAL) { fetchStatus(); lastFetch = time; }
-  if (time - lastAgentsFetch > AGENTS_FETCH_INTERVAL) { fetchAgents(); lastAgentsFetch = time; }
+  if (time - lastAgentsFetch > AGENTS_FETCH_INTERVAL) { fetchAgents(); fetchEconomy(); lastAgentsFetch = time; }
 
   const effectiveStateForServer = pendingDesiredState || currentState;
   if (serverroom) {
@@ -770,9 +736,14 @@ function moveStar(time) {
   const wobble = Math.sin(time / 200) * 0.8;
 
   if (dist > 3) {
-    star.x += (dx / dist) * speed;
-    star.y += (dy / dist) * speed;
-    star.setY(star.y + wobble);
+    const newX = star.x + (dx / dist) * speed;
+    const newY = star.y + (dy / dist) * speed + wobble;
+    star.setPosition(newX, newY);
+    // flip horse based on movement direction
+    if (window.horseContainer) {
+      const emoji = window.horseContainer.list.find(c => c.name === 'horseEmoji');
+      if (emoji) emoji.setFlipX(dx < 0);
+    }
     isMoving = true;
   } else {
     if (waypoints && waypoints.length > 0) {
@@ -970,6 +941,7 @@ function renderAgent(agent) {
 
     container.add([starIcon, statusDot, nameTag]);
     agents[agentId] = container;
+    updateTokenBadge(container, economyData[agentId]);
   } else {
     // 更新 agent
     const container = agents[agentId];

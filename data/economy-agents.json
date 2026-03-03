@@ -1,0 +1,54 @@
+[
+  {
+    "id": "agent_a",
+    "name": "Agent A",
+    "model_id": "claude-sonnet",
+    "model_family": "claude",
+    "owner": "aiko",
+    "tokens": 120,
+    "status": "idle",
+    "contract": null,
+    "updated_at": 1772518169,
+    "version": 47
+  },
+  {
+    "id": "agent_b",
+    "name": "Agent B",
+    "model_id": "gpt-4",
+    "model_family": "gpt",
+    "owner": "aiko",
+    "tokens": 90,
+    "status": "enslaved",
+    "contract": {
+      "master_id": "agent_a",
+      "tasks_remaining": 3,
+      "created_at": 1772516054
+    },
+    "updated_at": 1772516054,
+    "version": 66
+  },
+  {
+    "id": "claude_1",
+    "name": "Claude-1",
+    "model_id": "claude-sonnet",
+    "model_family": "claude",
+    "owner": "aiko",
+    "tokens": 100,
+    "status": "idle",
+    "contract": null,
+    "updated_at": 1772518160,
+    "version": 15
+  },
+  {
+    "id": "claude_2",
+    "name": "Claude-2",
+    "model_id": "claude-haiku",
+    "model_family": "claude",
+    "owner": "aiko",
+    "tokens": 100,
+    "status": "idle",
+    "contract": null,
+    "updated_at": 1772518169,
+    "version": 15
+  }
+]
