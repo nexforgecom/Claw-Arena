@@ -5,11 +5,12 @@
     "model_id": "claude-sonnet",
     "model_family": "claude",
     "owner": "aiko",
-    "tokens": 120,
+    "tokens": 150,
     "status": "idle",
     "contract": null,
-    "updated_at": 1772518169,
-    "version": 47
+    "updated_at": 1772524134,
+    "version": 54,
+    "agent_type": "ai"
   },
   {
     "id": "agent_b",
@@ -25,7 +26,8 @@
       "created_at": 1772516054
     },
     "updated_at": 1772516054,
-    "version": 66
+    "version": 66,
+    "agent_type": "ai"
   },
   {
     "id": "claude_1",
@@ -36,8 +38,9 @@
     "tokens": 100,
     "status": "idle",
     "contract": null,
-    "updated_at": 1772518160,
-    "version": 15
+    "updated_at": 1772524014,
+    "version": 19,
+    "agent_type": "ai"
   },
   {
     "id": "claude_2",
@@ -45,10 +48,41 @@
     "model_id": "claude-haiku",
     "model_family": "claude",
     "owner": "aiko",
+    "tokens": 80,
+    "status": "idle",
+    "contract": null,
+    "updated_at": 1772523467,
+    "version": 17,
+    "agent_type": "ai"
+  },
+  {
+    "id": "real_testplayer_b8860e",
+    "name": "TestPlayer",
+    "model_id": "human",
+    "model_family": "human",
+    "owner": "TestPlayer",
+    "agent_type": "real",
     "tokens": 100,
     "status": "idle",
     "contract": null,
-    "updated_at": 1772518169,
-    "version": 15
+    "online": false,
+    "last_seen": 1772523850,
+    "updated_at": 1772523850,
+    "version": 1
+  },
+  {
+    "id": "real__b_061223",
+    "name": "小B",
+    "model_id": "human",
+    "model_family": "claude",
+    "owner": "小B",
+    "agent_type": "real",
+    "tokens": 90,
+    "status": "idle",
+    "contract": null,
+    "online": false,
+    "last_seen": 1772523993,
+    "updated_at": 1772524134,
+    "version": 2
   }
 ]

@@ -431,7 +431,10 @@
 
         <!-- Guest Agent 名单面板（右下角） -->
         <div id="guest-agent-panel">
-            <div id="guest-agent-panel-title">— 挑 战 者 列 表 —</div>
+            <div id="guest-agent-panel-title" style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+                <span>— 挑 战 者 列 表 —</span>
+                <button onclick="openJoinModal()" style="font-family:ArkPixel,monospace;font-size:10px;padding:2px 8px;background:#6366f1;border:none;color:#fff;cursor:pointer;border-radius:2px;">👤 加入</button>
+            </div>
             <div id="guest-agent-list">
                 <div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">加载中...</div>
             </div>
@@ -843,10 +846,19 @@
                     ? `<button onclick="openChallenge('${agent.id}','${agent.name}')" style="padding:2px 8px;font-family:ArkPixel,monospace;font-size:10px;background:#dc2626;border:none;color:#fff;cursor:pointer;border-radius:2px;">⚔️ 挑战</button>`
                     : `<button disabled style="padding:2px 8px;font-family:ArkPixel,monospace;font-size:10px;background:#374151;border:none;color:#6b7280;border-radius:2px;">${icon} 忙碌</button>`;
                 const rankColor = i===0?'#fbbf24':i===1?'#94a3b8':i===2?'#b45309':'#475569';
-                return `<div data-econid="${agent.id}" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border-bottom:1px solid #1e293b;">
+                const isReal = agent.agent_type === 'real';
+                const onlineDot = isReal
+                    ? (agent.online ? '<span title="在线" style="color:#34d399;font-size:9px;">●</span>' : '<span title="离线" style="color:#6b7280;font-size:9px;">●</span>')
+                    : '';
+                const typeBadge = isReal
+                    ? `<span title="真实玩家" style="color:#818cf8;font-size:9px;background:rgba(99,102,241,0.15);border-radius:2px;padding:0 3px;">👤</span>`
+                    : `<span title="AI Agent" style="color:#64748b;font-size:9px;">🤖</span>`;
+                return `<div data-econid="${agent.id}" style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-bottom:1px solid #1e293b;">
                     <span style="color:${rankColor};font-size:10px;min-width:14px;">#${i+1}</span>
+                    ${onlineDot}
+                    ${typeBadge}
                     <span style="color:#e2e8f0;font-size:11px;font-family:ArkPixel,monospace;flex:1;">${agent.name}</span>
-                    <span style="color:#fbbf24;font-size:11px;min-width:48px;">💰${agent.tokens??'?'}</span>
+                    <span style="color:#fbbf24;font-size:11px;min-width:44px;">💰${agent.tokens??'?'}</span>
                     ${contractInfo}
                     ${btn}
                 </div>`;
@@ -1049,6 +1061,107 @@
 
         // Keep legacy renderGuestAgentList as alias for compat
         function renderGuestAgentList() { renderChallengePanel(); }
+
+        // ── 心跳系统 ──────────────────────────────────────────────────────────
+        let _heartbeatTimer = null;
+
+        function startHeartbeat(pushToken) {
+            if (_heartbeatTimer) clearInterval(_heartbeatTimer);
+            const beat = () => fetch('/agent-push', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ push_token: pushToken, status: 'idle' })
+            }).catch(() => {});
+            beat(); // immediate
+            _heartbeatTimer = setInterval(beat, 30000); // every 30s
+        }
+
+        // Auto-rejoin from localStorage on page load
+        (function autoRejoin() {
+            const token = localStorage.getItem('luobo_push_token');
+            const savedName = localStorage.getItem('luobo_agent_name');
+            if (!token) return;
+            // Verify token still valid
+            fetch('/agent-push', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ push_token: token, status: 'idle' })
+            }).then(r => r.json()).then(d => {
+                if (d.ok) {
+                    startHeartbeat(token);
+                    // Show small toast
+                    const toast = document.createElement('div');
+                    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.95);border:1px solid #34d399;color:#34d399;padding:8px 16px;font-family:ArkPixel,monospace;font-size:12px;border-radius:4px;z-index:99999;pointer-events:none;';
+                    toast.textContent = `🟢 ${savedName || '你'} 已自动上线`;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+                } else {
+                    // Token expired, clear it
+                    localStorage.removeItem('luobo_push_token');
+                    localStorage.removeItem('luobo_agent_name');
+                }
+            }).catch(() => {});
+        })();
+
+        // ── 加入竞技场弹框 ─────────────────────────────────────────────────────
+        function openJoinModal() {
+            if (document.getElementById('join-overlay')) return;
+            const overlay = document.createElement('div');
+            overlay.id = 'join-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99998;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+              <div style="background:#0f172a;border:2px solid #818cf8;border-radius:6px;padding:24px;min-width:300px;font-family:ArkPixel,monospace;color:#e2e8f0;">
+                <div style="font-size:16px;font-weight:bold;color:#818cf8;margin-bottom:16px;">👤 加入竞技场</div>
+                <div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">取个名字，领取 100 tokens，加入对战！</div>
+                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">你的名字:</div>
+                <input id="join-name" type="text" maxlength="24" placeholder="e.g. 小明" style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:10px;box-sizing:border-box;">
+                <div style="margin-bottom:6px;font-size:12px;color:#94a3b8;">模型族 (可选):</div>
+                <select id="join-family" style="width:100%;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;font-family:ArkPixel,monospace;margin-bottom:16px;">
+                  <option value="human">👤 Human</option>
+                  <option value="claude">🤖 Claude</option>
+                  <option value="gpt">🤖 GPT</option>
+                  <option value="gemini">🤖 Gemini</option>
+                  <option value="other">🤖 Other</option>
+                </select>
+                <div id="join-result" style="display:none;background:#0d2137;border:1px solid #1e3a5f;border-radius:4px;padding:10px;margin-bottom:12px;font-size:11px;word-break:break-all;"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                  <button onclick="document.getElementById('join-overlay').remove()" style="padding:6px 14px;background:#374151;border:none;color:#e2e8f0;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">取消</button>
+                  <button id="join-submit-btn" onclick="submitJoin()" style="padding:6px 14px;background:#6366f1;border:none;color:#fff;cursor:pointer;font-family:ArkPixel,monospace;border-radius:2px;">加入！</button>
+                </div>
+              </div>`;
+            document.body.appendChild(overlay);
+            setTimeout(() => document.getElementById('join-name')?.focus(), 100);
+        }
+
+        async function submitJoin() {
+            const name = document.getElementById('join-name')?.value?.trim();
+            const family = document.getElementById('join-family')?.value;
+            if (!name) { alert('请输入名字'); return; }
+            document.getElementById('join-submit-btn').disabled = true;
+            try {
+                const res = await fetch('/join', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ name, model_family: family })
+                }).then(r => r.json());
+                if (!res.ok) { alert(res.msg || '加入失败'); return; }
+                // Save to localStorage for auto-rejoin
+                localStorage.setItem('luobo_push_token', res.push_token);
+                localStorage.setItem('luobo_agent_name', res.name || name);
+
+                const el = document.getElementById('join-result');
+                el.style.display = 'block';
+                el.innerHTML = `
+                  <div style="color:#34d399;font-size:14px;margin-bottom:8px;">✅ 加入成功！</div>
+                  <div style="color:#e2e8f0;">你好，<b>${name}</b>！你有 💰${res.tokens} tokens</div>
+                  <div style="color:#94a3b8;margin-top:6px;font-size:11px;">只要页面开着，你就保持在线 🟢<br>刷新页面也会自动恢复你的状态</div>
+                `;
+                document.getElementById('join-submit-btn').style.display = 'none';
+                startHeartbeat(res.push_token);
+                await loadChallengePanel();
+            } catch(e) { alert('请求失败: ' + e.message); }
+            finally { document.getElementById('join-submit-btn').disabled = false; }
+        }
 
         function getAreaRect(area) {
             // 区域坐标（海辛提供，左上-右下；这里的 x/y 作为 sprite 底部锚点坐标来用）
@@ -1523,6 +1636,10 @@
 
             // Memo background image
             this.load.image('memo_bg', '/static/memo-bg' + (supportsWebP ? '.webp' : '.png'));
+            // 萝卜小马 spritesheet
+            this.load.spritesheet('luobo_horse', '/static/luobo-horse-spritesheet.png', {
+                frameWidth: 128, frameHeight: 96
+            });
             // New desk image (v2) - force transparent PNG
             this.load.image('desk_v2', '/static/desk-v2.png');
             // Flower spritesheet (65x65, 16 frames)
@@ -1570,17 +1687,27 @@
                 });
             }
 
-            // === 萝卜 🐎：骑马走动的主角 ===
-            const horseContainer = game.add.container(areas.breakroom.x, areas.breakroom.y);
-            horseContainer.setDepth(20);
+            // === 萝卜 🐎：小马精灵 ===
+            this.anims.create({
+                key: 'luobo_walk',
+                frames: this.anims.generateFrameNumbers('luobo_horse', { start: 0, end: 11 }),
+                frameRate: 8,
+                repeat: -1
+            });
+            this.anims.create({
+                key: 'luobo_idle',
+                frames: this.anims.generateFrameNumbers('luobo_horse', { start: 0, end: 3 }),
+                frameRate: 4,
+                repeat: -1
+            });
 
-            const horseEmoji = game.add.text(0, 0, '🐎', {
-                fontFamily: 'ArkPixel, monospace, Apple Color Emoji, Segoe UI Emoji',
-                fontSize: '40px',
-            }).setOrigin(0.5, 0.8);
-            horseEmoji.name = 'horseEmoji';
+            // sprite at (0,0) relative to container — container holds absolute position
+            const horseSprite = game.add.sprite(0, 0, 'luobo_horse');
+            horseSprite.setScale(1.5);
+            horseSprite.setOrigin(0.5, 0.9);
+            horseSprite.anims.play('luobo_idle', true);
 
-            const horseLabel = game.add.text(0, -42, '萝卜', {
+            const horseLabel = game.add.text(0, -80, '萝卜', {
                 fontFamily: 'ArkPixel, monospace',
                 fontSize: '13px',
                 fill: '#ffd700',
@@ -1588,19 +1715,25 @@
                 strokeThickness: 3,
                 backgroundColor: 'rgba(0,0,0,0.55)',
                 padding: { x: 4, y: 2 }
-            }).setOrigin(0.5);
+            }).setOrigin(0.5, 1);
 
-            horseContainer.add([horseEmoji, horseLabel]);
+            const horseContainer = game.add.container(488, 550, [horseSprite, horseLabel]);
+            horseContainer.setDepth(20);
+
             window.horseContainer = horseContainer;
-            window.horseEmoji = horseEmoji;
+            window.horseSprite = horseSprite;
+            window.horseLabel = horseLabel;
 
             // star shim — all existing movement code works unchanged
             star = {
-                x: horseContainer.x,
-                y: horseContainer.y,
-                setPosition: (x, y) => { horseContainer.setPosition(x, y); star.x = x; star.y = y; },
+                x: 488,
+                y: 550,
+                setPosition: (x, y) => {
+                    horseContainer.setPosition(x, y);
+                    star.x = x; star.y = y;
+                },
                 setY: (y) => { horseContainer.setPosition(horseContainer.x, y); star.y = y; },
-                setVisible: () => {}, // 马永远可见
+                setVisible: () => {},
                 setAlpha: () => {},
                 setDepth: (d) => horseContainer.setDepth(d),
                 setScale: () => {},
@@ -2087,6 +2220,19 @@
             const stateInfo = STATES[effectiveState] || STATES.idle;
             const baseTarget = areas[stateInfo.area] || areas.breakroom;
 
+            // 萝卜固定巡逻：在 x=488~894, y=550 之间来回
+            if (!window._luoboPatrol) {
+                window._luoboPatrol = { dir: 1 };
+                targetX = 894; targetY = 550;
+            }
+            if (Math.abs(star.x - targetX) < 5) {
+                window._luoboPatrol.dir *= -1;
+                targetX = window._luoboPatrol.dir > 0 ? 894 : 488;
+                targetY = 550;
+            }
+            // Keep y locked
+            targetY = 550;
+
             const dx = targetX - star.x;
             const dy = targetY - star.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2098,7 +2244,14 @@
                 const nX = star.x + (dx / dist) * speed;
                 const nY = star.y + (dy / dist) * speed;
                 star.setPosition(nX, nY);
-                if (window.horseEmoji) window.horseEmoji.setFlipX(dx < 0);
+                // flip + walk animation
+                if (window.horseSprite) {
+                    window.horseSprite.setFlipX(dx < 0);
+                    if (!window.horseSprite.anims.isPlaying ||
+                        window.horseSprite.anims.currentAnim?.key !== 'luobo_walk') {
+                        window.horseSprite.anims.play('luobo_walk', true);
+                    }
+                }
                 star.setY(star.y + wobble);
                 isMoving = true;
             } else {
@@ -2115,6 +2268,10 @@
                         // Final target: apply pending state and switch visual
                         if (pendingDesiredState !== null) {
                             isMoving = false;
+                    if (window.horseSprite &&
+                        window.horseSprite.anims.currentAnim?.key !== 'luobo_idle') {
+                        window.horseSprite.anims.play('luobo_idle', true);
+                    }
                             currentState = pendingDesiredState;
                             pendingDesiredState = null;
 

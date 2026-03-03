@@ -1144,5 +1144,104 @@
     "delta": 28,
     "created_at": 1772518179,
     "battle_id": "battle_473516ba"
+  },
+  {
+    "id": "ledger_000127",
+    "type": "battle_win",
+    "from": "agent_a",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772523164,
+    "battle_id": "battle_0edf0511"
+  },
+  {
+    "id": "ledger_000128",
+    "type": "battle_win",
+    "from": "claude_1",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772523167,
+    "battle_id": "battle_72e16d0f"
+  },
+  {
+    "id": "ledger_000129",
+    "type": "battle_win",
+    "from": "claude_2",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772523170,
+    "battle_id": "battle_ff31699f"
+  },
+  {
+    "id": "ledger_000130",
+    "type": "battle_win",
+    "from": "claude_1",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772523457,
+    "battle_id": "battle_a5f7b924"
+  },
+  {
+    "id": "ledger_000131",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772523464,
+    "battle_id": "battle_513e45fd"
+  },
+  {
+    "id": "ledger_000132",
+    "type": "bet_return",
+    "from": "escrow",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772523464,
+    "battle_id": "battle_513e45fd"
+  },
+  {
+    "id": "ledger_000133",
+    "type": "battle_win",
+    "from": "claude_2",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772523467,
+    "battle_id": "battle_bdb729cf"
+  },
+  {
+    "id": "ledger_000134",
+    "type": "init",
+    "from": "system",
+    "to": "real_testplayer_b8860e",
+    "delta": 100,
+    "created_at": 1772523850,
+    "note": "player joined"
+  },
+  {
+    "id": "ledger_000135",
+    "type": "init",
+    "from": "system",
+    "to": "real__b_061223",
+    "delta": 100,
+    "created_at": 1772523993,
+    "note": "player joined"
+  },
+  {
+    "id": "ledger_000136",
+    "type": "battle_win",
+    "from": "agent_a",
+    "to": "claude_1",
+    "delta": 10,
+    "created_at": 1772524014,
+    "battle_id": "battle_ccf0cd98"
+  },
+  {
+    "id": "ledger_000137",
+    "type": "battle_win",
+    "from": "real__b_061223",
+    "to": "agent_a",
+    "delta": 10,
+    "created_at": 1772524134,
+    "battle_id": "battle_f067c0e7"
   }
 ]

@@ -66,7 +66,18 @@ def _bump(agent, delta=0):
 
 @bp.route("/economy", methods=["GET"])
 def get_economy():
-    with _lock: agents = _load_agents()
+    ONLINE_TTL = 90
+    now = _now_ts()
+    with _lock:
+        agents = _load_agents()
+        changed = False
+        for a in agents:
+            if a.get("agent_type") == "real" and a.get("online"):
+                if now - a.get("last_seen", 0) > ONLINE_TTL:
+                    a["online"] = False; changed = True
+            if "agent_type" not in a:
+                a["agent_type"] = "ai"; changed = True
+        if changed: _save_agents(agents)
     return jsonify(agents)
 
 @bp.route("/ledger", methods=["GET"])
@@ -508,3 +519,133 @@ def walk_away():
         "master_tokens": master.get("tokens"),
         "slave_tokens":  slave.get("tokens"),
     })
+
+# ══════════════════════════════════════════════════════════════════════════
+# Real Player Join System
+# ══════════════════════════════════════════════════════════════════════════
+
+import secrets
+
+PUSH_TOKENS_FILE = os.path.join(DATA_DIR, "push-tokens.json")
+
+def _load_tokens():
+    if os.path.exists(PUSH_TOKENS_FILE):
+        try:
+            with open(PUSH_TOKENS_FILE) as f: return json.load(f)
+        except: pass
+    return {}  # { push_token: agent_id }
+
+def _save_tokens(tokens): _atomic_write(PUSH_TOKENS_FILE, tokens)
+
+
+@bp.route("/join", methods=["POST"])
+def join_arena():
+    """
+    Real player joins the arena.
+    Body: { name, model_family?, tokens? }
+    Returns: { agent_id, push_token } — push_token used for /agent-push
+    """
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()[:24]
+    model_family = (data.get("model_family") or "human").strip()
+    tokens = int(data.get("tokens", 100))
+
+    if not name:
+        return jsonify({"ok": False, "msg": "需要 name"}), 400
+
+    # Generate a URL-safe agent id from name
+    import re
+    agent_id = "real_" + re.sub(r'[^a-z0-9]', '_', name.lower())[:16] + "_" + secrets.token_hex(3)
+    push_token = secrets.token_urlsafe(24)
+
+    with _lock:
+        agents = _load_agents()
+        ledger = _load_ledger()
+        tokens_map = _load_tokens()
+
+        # Prevent name collision
+        if any(a.get("name") == name and a.get("agent_type") == "real" for a in agents):
+            return jsonify({"ok": False, "msg": f"名字 '{name}' 已被使用"}), 409
+
+        new_agent = {
+            "id":           agent_id,
+            "name":         name,
+            "model_id":     "human",
+            "model_family": model_family,
+            "owner":        name,
+            "agent_type":   "real",   # 👤 real player
+            "tokens":       tokens,
+            "status":       "idle",
+            "contract":     None,
+            "online":       True,
+            "last_seen":    _now_ts(),
+            "updated_at":   _now_ts(),
+            "version":      1,
+        }
+        agents.append(new_agent)
+        tokens_map[push_token] = agent_id
+
+        _append_ledger(ledger, "init", "system", agent_id, tokens, note="player joined")
+        _save_agents(agents)
+        _save_ledger(ledger)
+        _save_tokens(tokens_map)
+
+    return jsonify({
+        "ok":         True,
+        "agent_id":   agent_id,
+        "push_token": push_token,
+        "tokens":     tokens,
+        "arena_url":  request.host_url.rstrip("/"),
+    })
+
+
+@bp.route("/agent-push", methods=["POST"])
+def agent_push():
+    """
+    Real player pushes heartbeat / status.
+    Body: { push_token, status?, detail? }
+    """
+    data = request.get_json() or {}
+    push_token = (data.get("push_token") or "").strip()
+    if not push_token:
+        return jsonify({"ok": False, "msg": "需要 push_token"}), 400
+
+    with _lock:
+        tokens_map = _load_tokens()
+        agent_id = tokens_map.get(push_token)
+        if not agent_id:
+            return jsonify({"ok": False, "msg": "无效 push_token"}), 403
+
+        agents = _load_agents()
+        a = _get_agent(agents, agent_id)
+        if not a:
+            return jsonify({"ok": False, "msg": "agent 不存在"}), 404
+
+        a["online"]    = True
+        a["last_seen"] = _now_ts()
+        if data.get("status") in ("idle", "in_battle"):
+            a["status"] = data["status"]
+        a["version"]    = a.get("version", 0) + 1
+        a["updated_at"] = _now_ts()
+        _save_agents(agents)
+
+    return jsonify({"ok": True, "tokens": a.get("tokens"), "status": a.get("status")})
+
+
+@bp.route("/leave", methods=["POST"])
+def leave_arena():
+    """Player leaves arena (marks offline). Body: { push_token }"""
+    data = request.get_json() or {}
+    push_token = (data.get("push_token") or "").strip()
+    with _lock:
+        tokens_map = _load_tokens()
+        agent_id = tokens_map.get(push_token)
+        if not agent_id:
+            return jsonify({"ok": False, "msg": "无效 token"}), 403
+        agents = _load_agents()
+        a = _get_agent(agents, agent_id)
+        if a:
+            a["online"] = False
+            a["updated_at"] = _now_ts()
+            _save_agents(agents)
+    return jsonify({"ok": True})
