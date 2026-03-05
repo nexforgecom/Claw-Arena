@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+.env
+
+# OS
+.DS_Store
+
+# Runtime / local data (keep state.sample.json as template)
+state.json
+agents-state.json
+data/economy-agents.json
+data/ledger.json
+data/battles.json
+data/tasks.json
+data/push-tokens.json
+data/join-keys.json
+data/alliances.json
+
+# Logs & temp
+*.log
+*.out
+*.pid
+*.backup*
+*.original
+cloudflared.pid
+cloudflared.out
+healthcheck.log
+backend.log
+frontend/office_bg.png
