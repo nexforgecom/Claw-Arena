@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime
 import json
@@ -8,79 +8,75 @@ import threading
 app = Flask(__name__)
 CORS(app)
 
-# Paths
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(ROOT_DIR, '../data')
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data')
 os.makedirs(DATA_DIR, exist_ok=True)
 
-STATE_FILE = os.path.join(DATA_DIR, 'state.json')
-LEDGER_FILE = os.path.join(DATA_DIR, 'ledger.json')
-BATTLES_FILE = os.path.join(DATA_DIR, 'battles.json')
+ARENA_FILE = os.path.join(DATA_DIR, 'arena.json')
 AGENTS_FILE = os.path.join(DATA_DIR, 'agents.json')
-TASKS_FILE = os.path.join(DATA_DIR, 'tasks.json')
+BATTLES_FILE = os.path.join(DATA_DIR, 'battles.json')
 
-DEFAULT_STATE = {"arena": {"status": "open", "players": [], "battles": []}}
-
-def load_json(file_path, default):
-    if os.path.exists(file_path):
+def load_data(file, default):
+    if os.path.exists(file):
         try:
-            with open(file_path, 'r') as f:
+            with open(file, 'r') as f:
                 return json.load(f)
         except:
             pass
     return default
 
-def save_json(file_path, data):
-    with open(file_path, 'w') as f:
+def save_data(file, data):
+    with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-state = load_json(STATE_FILE, DEFAULT_STATE)
-ledger = load_json(LEDGER_FILE, {})
-battles = load_json(BATTLES_FILE, [])
-agents = load_json(AGENTS_FILE, {})
-tasks = load_json(TASKS_FILE, [])
+arena = load_data(ARENA_FILE, {"status": "open", "players": []})
+agents = load_data(AGENTS_FILE, [])
+battles = load_data(BATTLES_FILE, [])
 
 lock = threading.Lock()
 
 @app.route('/arena-status', methods=['GET'])
 def arena_status():
-    return jsonify(state['arena'])
+    return jsonify(arena)
+
+@app.route('/agents', methods=['GET'])
+def get_agents():
+    return jsonify(agents)
 
 @app.route('/join', methods=['POST'])
 def join():
     with lock:
-        data = request.json
-        player_id = data.get('player_id')
-        if not player_id:
-            return jsonify({"error": "player_id required"}), 400
-        if player_id not in state['arena']['players']:
-            state['arena']['players'].append(player_id)
-            save_json(STATE_FILE, state)
-        return jsonify({"status": "joined", "player_id": player_id})
+        data = request.json or {}
+        player = data.get('player_id') or f"player_{len(arena['players'])+1}"
+        if player not in arena['players']:
+            arena['players'].append(player)
+            save_data(ARENA_FILE, arena)
+        return jsonify({"status": "joined", "player": player})
 
 @app.route('/challenge', methods=['POST'])
 def challenge():
     with lock:
-        data = request.json
+        data = request.json or {}
         challenger = data.get('challenger')
         opponent = data.get('opponent')
-        if not challenger or not opponent:
-            return jsonify({"error": "missing params"}), 400
-        battle_id = f"{challenger}_vs_{opponent}_{datetime.now().timestamp()}"
-        battles.append({"id": battle_id, "challenger": challenger, "opponent": opponent, "status": "pending"})
-        save_json(BATTLES_FILE, battles)
-        return jsonify({"battle_id": battle_id})
+        if challenger and opponent:
+            battle = {"id": f"{challenger}_vs_{opponent}_{datetime.now().timestamp()}", "status": "pending"}
+            battles.append(battle)
+            save_data(BATTLES_FILE, battles)
+            return jsonify(battle)
+        return jsonify({"error": "missing params"}), 400
 
-# Tambahkan route lain sesuai kebutuhan game (submit-move, resolve-battle, tasks, dll)
-# Contoh placeholder
 @app.route('/submit-move', methods=['POST'])
 def submit_move():
-    return jsonify({"status": "move received"})
+    return jsonify({"status": "move accepted"})
 
-@app.route('/')
-def root():
-    return app.send_static_file('../index.html')
+@app.route('/tasks', methods=['GET'])
+def tasks():
+    return jsonify([])
+
+@app.route('/', methods=['GET'])
+def serve_index():
+    return send_from_directory('../', 'index.html')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 18795))
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
