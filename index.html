@@ -32,7 +32,11 @@
             max-width: 95vw;
             max-height: 70vh;
             aspect-ratio: 16 / 9;
-            background: #000; /* fallback kalau Phaser gagal */
+            pointer-events: none;  /* Izinkan klik lewat ke tombol di bawah */
+            background: #000;
+        }
+        #game-container canvas {
+            pointer-events: auto;  /* Kalau nanti butuh interaksi di canvas */
         }
         #loading-overlay {
             position: fixed;
@@ -45,12 +49,14 @@
             align-items: center;
             z-index: 100000;
             color: #ffd700;
+            pointer-events: none;
         }
         #bottom-panels {
             display: flex;
             gap: 20px;
             width: 1280px;
             max-width: 95vw;
+            pointer-events: auto;
         }
         #memo-panel, #control-bar, #guest-agent-panel {
             background: #2c2f3a;
@@ -60,6 +66,7 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             flex: 1;
             min-height: 300px;
+            pointer-events: auto;
         }
         button {
             background: #3a3f4f;
@@ -70,6 +77,7 @@
             font-family: 'ArkPixel', monospace;
             width: 100%;
             margin: 5px 0;
+            pointer-events: auto;
         }
         button:hover { background: #4a4f5f; }
     </style>
@@ -108,20 +116,18 @@
         class ArenaScene extends Phaser.Scene {
             constructor() { super({ key: 'ArenaScene' }); }
             preload() {
-                this.load.on('filecomplete', () => console.log('Asset loaded'));
-                this.load.on('loaderror', (file) => console.error('Asset load error:', file.key, file.url));
                 this.load.image('office', '/frontend/office-bg.png');
                 this.load.spritesheet('rabbit', '/frontend/rabbit.png', { frameWidth: 458, frameHeight: 384 });
                 this.load.spritesheet('cow', '/frontend/cow.png', { frameWidth: 458, frameHeight: 384 });
                 this.load.spritesheet('sheep', '/frontend/sheep.png', { frameWidth: 458, frameHeight: 384 });
+                this.load.on('complete', () => {
+                    console.log('All assets loaded');
+                    document.getElementById('loading-overlay').style.display = 'none';
+                });
             }
             create() {
                 this.add.image(640, 360, 'office').setDisplaySize(1280, 720);
-                console.log('Phaser scene created - check if background visible');
-                fetch(CONFIG.API_BASE + 'arena-status')
-                    .then(r => r.json())
-                    .then(data => console.log('Arena status OK:', data))
-                    .catch(e => console.error('API fetch failed:', e));
+                console.log('Scene created');
             }
         }
 
@@ -132,20 +138,38 @@
             parent: 'game-container',
             scene: [ArenaScene],
             pixelArt: true,
-            scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }
+            scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+            input: { mouse: { capture: false } }
         };
 
         new Phaser.Game(config);
 
-        // Hide loading after Phaser init
+        function joinArena() {
+            console.log('Join button clicked!');
+            fetch(CONFIG.API_BASE + 'join', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({})})
+                .then(r => r.json()).then(console.log).catch(console.error);
+        }
+
+        function refreshArena() {
+            console.log('Refresh clicked');
+            location.reload();
+        }
+
+        function viewTasks() {
+            console.log('View Tasks clicked');
+            fetch(CONFIG.API_BASE + 'tasks').then(r => r.json()).then(console.log);
+        }
+
+        function randomChallenge() {
+            console.log('Random Challenge clicked');
+            fetch(CONFIG.API_BASE + 'challenge', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({})})
+                .then(r => r.json()).then(console.log);
+        }
+
+        // Hide loading jika preload lama
         setTimeout(() => {
             document.getElementById('loading-overlay').style.display = 'none';
-        }, 3000);
-
-        function joinArena() { fetch(CONFIG.API_BASE + 'join', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({})}).then(r=>r.json()).then(console.log); }
-        function refreshArena() { location.reload(); }
-        function viewTasks() { fetch(CONFIG.API_BASE + 'tasks').then(r=>r.json()).then(console.log); }
-        function randomChallenge() { fetch(CONFIG.API_BASE + 'challenge', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({})}).then(r=>r.json()).then(console.log); }
+        }, 5000);
     </script>
 </body>
-</html>
+                </html>
