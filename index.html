@@ -32,6 +32,7 @@
             max-width: 95vw;
             max-height: 70vh;
             aspect-ratio: 16 / 9;
+            background: #000; /* fallback kalau Phaser gagal */
         }
         #loading-overlay {
             position: fixed;
@@ -43,6 +44,7 @@
             justify-content: center;
             align-items: center;
             z-index: 100000;
+            color: #ffd700;
         }
         #bottom-panels {
             display: flex;
@@ -58,12 +60,6 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             flex: 1;
             min-height: 300px;
-        }
-        #control-bar-title, #memo-title, #guest-agent-panel-title {
-            color: #ffd700;
-            font-size: 16px;
-            text-align: center;
-            margin-bottom: 10px;
         }
         button {
             background: #3a3f4f;
@@ -112,6 +108,8 @@
         class ArenaScene extends Phaser.Scene {
             constructor() { super({ key: 'ArenaScene' }); }
             preload() {
+                this.load.on('filecomplete', () => console.log('Asset loaded'));
+                this.load.on('loaderror', (file) => console.error('Asset load error:', file.key, file.url));
                 this.load.image('office', '/frontend/office-bg.png');
                 this.load.spritesheet('rabbit', '/frontend/rabbit.png', { frameWidth: 458, frameHeight: 384 });
                 this.load.spritesheet('cow', '/frontend/cow.png', { frameWidth: 458, frameHeight: 384 });
@@ -119,10 +117,11 @@
             }
             create() {
                 this.add.image(640, 360, 'office').setDisplaySize(1280, 720);
+                console.log('Phaser scene created - check if background visible');
                 fetch(CONFIG.API_BASE + 'arena-status')
                     .then(r => r.json())
-                    .then(data => console.log('Arena:', data))
-                    .catch(e => console.error(e));
+                    .then(data => console.log('Arena status OK:', data))
+                    .catch(e => console.error('API fetch failed:', e));
             }
         }
 
@@ -138,29 +137,15 @@
 
         new Phaser.Game(config);
 
-        function joinArena() {
-            fetch(CONFIG.API_BASE + 'join', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({player_id: 'guest_' + Date.now()})
-            }).then(r => r.json()).then(console.log);
-        }
+        // Hide loading after Phaser init
+        setTimeout(() => {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }, 3000);
 
-        function refreshArena() {
-            location.reload();
-        }
-
-        function viewTasks() {
-            fetch(CONFIG.API_BASE + 'tasks').then(r => r.json()).then(console.log);
-        }
-
-        function randomChallenge() {
-            fetch(CONFIG.API_BASE + 'challenge', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({challenger: 'player1', opponent: 'player2'})
-            }).then(r => r.json()).then(console.log);
-        }
+        function joinArena() { fetch(CONFIG.API_BASE + 'join', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({})}).then(r=>r.json()).then(console.log); }
+        function refreshArena() { location.reload(); }
+        function viewTasks() { fetch(CONFIG.API_BASE + 'tasks').then(r=>r.json()).then(console.log); }
+        function randomChallenge() { fetch(CONFIG.API_BASE + 'challenge', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({})}).then(r=>r.json()).then(console.log); }
     </script>
 </body>
-                </html>
+</html>
